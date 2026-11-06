@@ -176,13 +176,21 @@ def fetch_poly(max_items=2000):
 
 
 def canonical_kalshi(m):
-    # Parent-event context is critical: many Kalshi market titles are terse
-    # outcome labels whose meaning is only clear inside the event.
-    fields = [
-        m.get("_event_title"), m.get("_event_sub_title"),
-        m.get("title"), m.get("subtitle"), m.get("yes_sub_title")
-    ]
-    title = " ".join(dict.fromkeys(x.strip() for x in fields if isinstance(x, str) and x.strip()))
+    # Preserve parent-event context for display/disambiguation, but score
+    # explicit question-like market propositions on their own wording. This
+    # avoids diluting near-identical propositions with umbrella-event prose.
+    market_fields = [m.get("title"), m.get("subtitle"), m.get("yes_sub_title")]
+    proposition = " ".join(dict.fromkeys(
+        x.strip() for x in market_fields if isinstance(x, str) and x.strip()
+    ))
+    event_fields = [m.get("_event_title"), m.get("_event_sub_title")]
+    context = " ".join(dict.fromkeys(
+        x.strip() for x in event_fields if isinstance(x, str) and x.strip()
+    ))
+    title = " ".join(x for x in [context, proposition] if x)
+    question_like = re.match(r"^(will|does|do|is|are|can|could|who|which|what|when|where|how)\b",
+                             proposition.strip().lower() if proposition else "")
+    match_text = proposition if question_like else title
     p = kalshi_probability(m)
     if p is None or not title:
         return None
@@ -191,6 +199,8 @@ def canonical_kalshi(m):
     return {
         "id": ticker,
         "title": title.strip(),
+        "match_text": match_text.strip(),
+        "context": context.strip(),
         "probability": p,
         "volume": fnum(m.get("volume_fp"), 0) or 0,
         "close_time": m.get("close_time") or m.get("expected_expiration_time"),
@@ -248,14 +258,14 @@ def diagnose_candidates(kalshi, poly, limit=20):
     top = []
     for k in kalshi:
         candidate_ids = defaultdict(int)
-        for t in tokens(k["title"]):
+        for t in tokens(k.get("match_text") or k["title"]):
             for i in pindex.get(t, ()):
                 candidate_ids[i] += 1
         for i, count in candidate_ids.items():
             if count < 2:
                 continue
             p = poly[i]
-            score = match_score(k["title"], p["question"], k.get("close_time"), p.get("end_time"))
+            score = match_score(k.get("match_text") or k["title"], p["question"], k.get("close_time"), p.get("end_time"))
             top.append((score, k["title"], p["question"]))
     top.sort(key=lambda x: x[0], reverse=True)
     return [
@@ -274,7 +284,7 @@ def build_pairs(kalshi, poly):
     matches = []
     used_poly = set()
     for k in sorted(kalshi, key=lambda x: x.get("volume", 0), reverse=True):
-        kt = tokens(k["title"])
+        kt = tokens(k.get("match_text") or k["title"])
         candidate_ids = defaultdict(int)
         for t in kt:
             for i in pindex.get(t, ()):
@@ -283,7 +293,7 @@ def build_pairs(kalshi, poly):
         best = None
         for i in ranked:
             p = poly[i]
-            score = match_score(k["title"], p["question"], k.get("close_time"), p.get("end_time"))
+            score = match_score(k.get("match_text") or k["title"], p["question"], k.get("close_time"), p.get("end_time"))
             if score < 0.76:
                 continue
             gap = abs(k["probability"] - p["probability"])
