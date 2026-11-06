@@ -20,6 +20,7 @@
     </a>
     <nav aria-label="Primary">
       <a href="#disagreements">Disagreements</a>
+      <a href="#review">Review queue</a>
       <a href="#method">Method</a>
       <a href="https://github.com/operational-experiments/anticipaid" rel="noreferrer">Source</a>
     </nav>
@@ -41,8 +42,8 @@
     </section>
 
     <section class="metric-row" aria-label="Snapshot metrics">
-      <article><span class="metric" id="metric-pairs">—</span><span class="metric-label">candidate pairs</span></article>
-      <article><span class="metric" id="metric-max-gap">—</span><span class="metric-label">largest observed gap</span></article>
+      <article><span class="metric" id="metric-pairs">—</span><span class="metric-label">unblocked candidates</span></article>
+      <article><span class="metric" id="metric-withheld">—</span><span class="metric-label">withheld by semantic guards</span></article>
       <article><span class="metric" id="metric-markets">—</span><span class="metric-label">open markets scanned</span></article>
       <article><span class="metric" id="metric-updated">—</span><span class="metric-label">snapshot age</span></article>
     </section>
@@ -50,8 +51,8 @@
     <section class="panel" id="disagreements">
       <div class="section-head">
         <div>
-          <div class="eyebrow">candidate equivalences</div>
-          <h2>Where markets disagree</h2>
+          <div class="eyebrow">semantically unblocked candidates</div>
+          <h2>Where markets may disagree</h2>
         </div>
         <div class="control-group">
           <label for="min-gap">Minimum gap</label>
@@ -65,7 +66,7 @@
       </div>
 
       <div class="notice">
-        <strong>Important:</strong> a candidate pair means the questions appear substantially similar. It does <em>not</em> certify identical settlement rules, deadlines, sources, or edge-case handling. Treat the match score as triage, not truth.
+        <strong>Important:</strong> rows appear here only after lexical discovery and deterministic incompatibility checks. Passing those checks is still <em>not</em> proof of identical settlement semantics. The system is optimized to withhold questionable comparisons rather than manufacture arbitrage.
       </div>
 
       <div class="table-wrap">
@@ -87,6 +88,32 @@
       <p class="table-footnote">Probabilities are snapshots derived from public venue data. Market prices can move between rebuilds.</p>
     </section>
 
+    <section class="panel review-panel" id="review">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">transparent failure surface</div>
+          <h2>Candidate review queue</h2>
+        </div>
+      </div>
+      <div class="notice neutral">
+        High lexical similarity is not enough. These candidates were withheld because the automated semantic guard found concrete reasons not to compare their prices as the same proposition.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Why withheld</th>
+              <th>Lexical match</th>
+            </tr>
+          </thead>
+          <tbody id="withheld-body">
+            <tr><td colspan="3" class="loading-cell">Loading review queue…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="method" id="method">
       <div class="section-head">
         <div>
@@ -102,18 +129,18 @@
         </article>
         <article>
           <span class="step">02</span>
-          <h3>Constrain</h3>
-          <p>Reject obviously incompatible candidates, including conflicting numeric terms, and require substantial token overlap.</p>
+          <h3>Discover</h3>
+          <p>Use token overlap and sequence similarity to find plausible cross-venue candidates without yet calling them equivalent.</p>
         </article>
         <article>
           <span class="step">03</span>
-          <h3>Score</h3>
-          <p>Combine token-set overlap with sequence similarity. Only high-scoring candidates survive into the public comparison.</p>
+          <h3>Gate</h3>
+          <p>Compare available settlement rules, explicit horizons, scheduled end times, and known semantic contradictions. Conflicts are withheld.</p>
         </article>
         <article>
           <span class="step">04</span>
-          <h3>Refuse certainty</h3>
-          <p>Even a strong lexical match remains a candidate until settlement semantics are explicitly reconciled.</p>
+          <h3>Publish carefully</h3>
+          <p>Only unblocked candidates get price-gap treatment. The review queue preserves rejected candidates and the reasons for rejection.</p>
         </article>
       </div>
     </section>
@@ -130,7 +157,7 @@
   <footer>
     <span>Anticipaid</span>
     <span>Data for analysis, not trading advice.</span>
-    <span><a href="https://github.com/operational-experiments/anticipaid">github</a></span>
+    <span><a href="https://github.com/operational-experiments/anticipaid">github</a> · <a href="https://github.com/operational-experiments/anticipaid/blob/main/EXPERIMENTS.md">experiments</a></span>
   </footer>
 </body>
 </html>
