@@ -29,6 +29,7 @@ STOP = {
 }
 WORD_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
+YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 
 
 def get_json(url: str, params: dict | None = None, retries: int = 3):
