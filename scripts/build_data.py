@@ -201,6 +201,9 @@ def canonical_kalshi(m):
         "title": title.strip(),
         "match_text": match_text.strip(),
         "context": context.strip(),
+        "rules_primary": (m.get("rules_primary") or "").strip(),
+        "rules_secondary": (m.get("rules_secondary") or "").strip(),
+        "early_close_condition": (m.get("early_close_condition") or "").strip(),
         "probability": p,
         "volume": fnum(m.get("volume_fp"), 0) or 0,
         "close_time": m.get("close_time") or m.get("expected_expiration_time"),
@@ -217,6 +220,8 @@ def canonical_poly(m):
     return {
         "id": str(m.get("id") or m.get("conditionId") or slug),
         "question": q.strip(),
+        "description": (m.get("description") or "").strip(),
+        "resolution_source": (m.get("resolutionSource") or m.get("resolvedBy") or "").strip(),
         "probability": p,
         "volume": fnum(m.get("volumeNum"), 0) or fnum(m.get("volume"), 0) or 0,
         "end_time": m.get("endDate") or m.get("end_date_iso"),
@@ -274,6 +279,66 @@ def diagnose_candidates(kalshi, poly, limit=20):
     ]
 
 
+def _full_terms(k, p):
+    ktext = " ".join(x for x in [
+        k.get("context"), k.get("match_text"), k.get("rules_primary"),
+        k.get("rules_secondary"), k.get("early_close_condition")
+    ] if x)
+    ptext = " ".join(x for x in [
+        p.get("question"), p.get("description"), p.get("resolution_source")
+    ] if x)
+    return ktext, ptext
+
+
+def _stance(text, terms):
+    """Return -1 for explicit exclusion, +1 for explicit inclusion, else 0."""
+    s = (text or "").lower()
+    if not any(t in s for t in terms):
+        return 0
+    term = r"(?:acting|interim|caretaker)"
+    negative = [
+        rf"{term}.{{0,80}}(?:will not|won't|do not|does not|not)\s+(?:count|qualify|include)",
+        rf"(?:will not|won't|do not|does not|not)\s+(?:count|qualify|include).{{0,80}}{term}",
+        rf"(?:exclude|excluding|excluded).{{0,80}}{term}",
+    ]
+    positive = [
+        rf"{term}.{{0,80}}(?:count|counts|qualify|qualifies|include|included)",
+        rf"(?:count|counts|qualify|qualifies|include|included).{{0,80}}{term}",
+    ]
+    if any(re.search(pat, s) for pat in negative):
+        return -1
+    if any(re.search(pat, s) for pat in positive):
+        return 1
+    return 0
+
+
+def semantic_conflicts(k, p):
+    """Conservative deterministic incompatibility checks.
+
+    Passing these checks is not proof of settlement equivalence.
+    """
+    reasons = []
+    ktext, ptext = _full_terms(k, p)
+
+    ky, py = set(YEAR_RE.findall(ktext)), set(YEAR_RE.findall(ptext))
+    if ky and py and ky.isdisjoint(py):
+        reasons.append(
+            "explicit horizon years differ "
+            f"(Kalshi {', '.join(sorted(ky))}; Polymarket {', '.join(sorted(py))})"
+        )
+
+    dd = deadline_delta_days(k.get("close_time"), p.get("end_time"))
+    if dd is not None and dd > 370:
+        reasons.append(f"scheduled end times differ by about {round(dd)} days")
+
+    ks = _stance(ktext, ("acting", "interim", "caretaker"))
+    ps = _stance(ptext, ("acting", "interim", "caretaker"))
+    if ks and ps and ks != ps:
+        reasons.append("acting/interim/caretaker treatment conflicts")
+
+    return reasons
+
+
 def build_pairs(kalshi, poly):
     pindex = defaultdict(set)
     for i, p in enumerate(poly):
@@ -281,39 +346,66 @@ def build_pairs(kalshi, poly):
             if len(t) >= 3:
                 pindex[t].add(i)
 
-    matches = []
+    matches, withheld = [], []
     used_poly = set()
+
     for k in sorted(kalshi, key=lambda x: x.get("volume", 0), reverse=True):
         kt = tokens(k.get("match_text") or k["title"])
         candidate_ids = defaultdict(int)
         for t in kt:
             for i in pindex.get(t, ()):
                 candidate_ids[i] += 1
-        ranked = [i for i, count in candidate_ids.items() if count >= 2 and i not in used_poly]
-        best = None
-        for i in ranked:
+
+        candidates = []
+        for i, count in candidate_ids.items():
+            if count < 2:
+                continue
             p = poly[i]
-            score = match_score(k.get("match_text") or k["title"], p["question"], k.get("close_time"), p.get("end_time"))
+            score = match_score(
+                k.get("match_text") or k["title"], p["question"],
+                k.get("close_time"), p.get("end_time")
+            )
             if score < 0.76:
                 continue
             gap = abs(k["probability"] - p["probability"])
-            candidate = (score, gap, i, p)
-            if best is None or candidate[:2] > best[:2]:
-                best = candidate
-        if best:
-            score, gap, i, p = best
+            conflicts = semantic_conflicts(k, p)
+            candidates.append((score, gap, i, p, conflicts))
+
+        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        chosen = None
+        for candidate in candidates:
+            score, gap, i, p, conflicts = candidate
+            if not conflicts and i not in used_poly:
+                chosen = candidate
+                break
+
+        if chosen:
+            score, gap, i, p, conflicts = chosen
             used_poly.add(i)
             matches.append({
                 "display_question": k["title"],
                 "match_score": round(score, 4),
                 "gap": round(gap, 4),
-                "note": "Candidate lexical match; verify settlement rules before treating as equivalent.",
+                "compatibility": "unblocked_candidate",
+                "note": "No automated incompatibility rule fired; settlement equivalence remains unproven.",
                 "kalshi": k,
                 "polymarket": p,
             })
-    matches.sort(key=lambda x: (x["gap"], x["match_score"]), reverse=True)
-    return matches[:100]
+        elif candidates:
+            score, gap, i, p, conflicts = candidates[0]
+            withheld.append({
+                "display_question": k["title"],
+                "match_score": round(score, 4),
+                "gap": round(gap, 4),
+                "compatibility": "withheld",
+                "reasons": conflicts or ["candidate consumed by a stronger one-to-one match"],
+                "kalshi": k,
+                "polymarket": p,
+            })
 
+    matches.sort(key=lambda x: (x["gap"], x["match_score"]), reverse=True)
+    withheld.sort(key=lambda x: (x["match_score"], x["gap"]), reverse=True)
+    return matches[:100], withheld[:100]
 
 def main():
     ap = argparse.ArgumentParser()
@@ -335,15 +427,24 @@ def main():
 
     k = [x for x in (canonical_kalshi(m) for m in raw_k) if x]
     p = [x for x in (canonical_poly(m) for m in raw_p) if x]
-    pairs = build_pairs(k, p) if k and p else []
+    if k and p:
+        pairs, withheld = build_pairs(k, p)
+    else:
+        pairs, withheld = [], []
     diagnostics = diagnose_candidates(k, p) if k and p else []
     print(json.dumps({"top_candidate_scores": diagnostics}, indent=2))
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "method_version": "lexical-candidate-v1",
-        "stats": {"kalshi_open": len(k), "polymarket_open": len(p), "candidate_pairs": len(pairs)},
+        "method_version": "lexical-plus-semantic-guard-v2",
+        "stats": {
+            "kalshi_open": len(k),
+            "polymarket_open": len(p),
+            "comparable_candidates": len(pairs),
+            "withheld_candidates": len(withheld),
+        },
         "sources": source,
         "pairs": pairs,
+        "withheld_candidates": withheld,
     }
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
