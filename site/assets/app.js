@@ -17,9 +17,9 @@
 
   function renderMetrics(data) {
     const pairs = data.pairs || [];
-    const maxGap = pairs.length ? Math.max(...pairs.map(p => p.gap || 0)) : 0;
+    const withheld = data.withheld_candidates || [];
     document.querySelector('#metric-pairs').textContent = pairs.length.toLocaleString();
-    document.querySelector('#metric-max-gap').textContent = fmtGap(maxGap);
+    document.querySelector('#metric-withheld').textContent = withheld.length.toLocaleString();
     document.querySelector('#metric-markets').textContent = ((data.stats?.kalshi_open || 0) + (data.stats?.polymarket_open || 0)).toLocaleString();
     document.querySelector('#metric-updated').textContent = ageLabel(data.generated_at);
     const sources = data.sources || {};
@@ -55,6 +55,25 @@
       </tr>`).join('');
   }
 
+  function renderWithheld() {
+    const body = document.querySelector('#withheld-body');
+    if (!body || !snapshot) return;
+    const rows = snapshot.withheld_candidates || [];
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="3" class="empty-cell">No candidates were withheld in this snapshot.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.slice(0, 50).map(p => `
+      <tr>
+        <td class="question">
+          <strong>${escapeHtml(p.kalshi?.match_text || p.display_question)}</strong>
+          <small>vs. ${escapeHtml(p.polymarket?.question || '')}</small>
+        </td>
+        <td><ul class="reason-list">${(p.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></td>
+        <td class="score">${Math.round((p.match_score || 0) * 100)}%</td>
+      </tr>`).join('');
+  }
+
   async function boot() {
     try {
       const res = await fetch(`data/latest.json?v=${Date.now()}`, {cache: 'no-store'});
@@ -62,9 +81,12 @@
       snapshot = await res.json();
       renderMetrics(snapshot);
       renderPairs();
+      renderWithheld();
     } catch (err) {
       document.querySelector('#snapshot-status').textContent = 'Snapshot unavailable · deployment may still be warming up';
-      document.querySelector('#pairs-body').innerHTML = `<tr><td colspan="5" class="empty-cell">No generated snapshot is available yet. The scheduled build will populate this table after GitHub Pages is enabled.</td></tr>`;
+      document.querySelector('#pairs-body').innerHTML = `<tr><td colspan="5" class="empty-cell">No generated snapshot is available yet.</td></tr>`;
+      const withheld = document.querySelector('#withheld-body');
+      if (withheld) withheld.innerHTML = `<tr><td colspan="3" class="empty-cell">Review queue unavailable.</td></tr>`;
       console.error(err);
     }
   }
