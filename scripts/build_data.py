@@ -196,7 +196,7 @@ def match_score(a: str, b: str, a_deadline=None, b_deadline=None):
     if not ta or not tb:
         return 0.0
     na_nums, nb_nums = nums(a), nums(b)
-    if (na_nums or nb_nums) and na_nums != nb_nums:
+    if na_nums and nb_nums and na_nums != nb_nums:
         return 0.0
     inter = ta & tb
     if len(inter) < 2:
