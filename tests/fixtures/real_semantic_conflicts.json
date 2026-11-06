@@ -1,0 +1,54 @@
+{
+  "captured_at": "2026-11-06T17:12:47Z",
+  "cases": [
+    {
+      "id": "israel-pm-yair-lapid",
+      "sources": [
+        "https://external-api.kalshi.com/trade-api/v2/markets/KXNEXTISRAELPM-45JAN01-YLAP",
+        "https://gamma-api.polymarket.com/markets/682707"
+      ],
+      "kalshi": {
+        "match_text": "Will Yair Lapid be the next Prime Minister of Israel?",
+        "context": "Who will succeed Netanyahu as Prime Minister of Israel? Before Jan 1, 2045",
+        "rules_primary": "If the first new person to hold Prime Minister of Israel after Issuance is Yair Lapid, then the market resolves to Yes.",
+        "rules_secondary": "The market resolves based on who actually assumes the office of Prime Minister, not who is elected or nominated. Acting or interim appointments count as holding the position if they formally assume the office.",
+        "early_close_condition": "This market will close and expire early if a new Prime Minister takes office.",
+        "close_time": "2045-01-01T15:00:00Z"
+      },
+      "polymarket": {
+        "question": "Will Yair Lapid be the next Prime Minister of Israel?",
+        "description": "This market will resolve to the next individual who is officially appointed and sworn in as Prime Minister of Israel following the 2026 parliamentary election. Any interim or caretaker Prime Minister will not count toward the resolution of this market. If no such Prime Minister is sworn in by December 31, 2027, 11:59 PM ET, this market will resolve to “Other”.",
+        "resolution_source": "official information from the Government of Israel",
+        "end_time": "2026-10-28T03:59:00Z"
+      },
+      "expected_reason_fragments": [
+        "explicit deadline years differ",
+        "acting/interim/caretaker treatment conflicts"
+      ]
+    },
+    {
+      "id": "next-james-bond-callum-turner",
+      "sources": [
+        "https://external-api.kalshi.com/trade-api/v2/markets/KXBOND-30-CAL",
+        "https://gamma-api.polymarket.com/markets/2293862"
+      ],
+      "kalshi": {
+        "match_text": "Will Callum Turner be the next James Bond?",
+        "context": "Next James Bond film: Actor cast as James Bond Before 2030",
+        "rules_primary": "If Callum Turner is cast as the next James Bond before Jan 1, 2030, then the market resolves to Yes.",
+        "rules_secondary": "This is for the next film in the James Bond series, which goes back to Dr. No (1962); spin-offs and unauthorized productions are not included.",
+        "early_close_condition": "This market will close and expire early if the event occurs.",
+        "close_time": "2030-01-01T15:00:00Z"
+      },
+      "polymarket": {
+        "question": "Callum Turner announced as next James Bond?",
+        "description": "This market will resolve to “Yes” if the listed actor is officially announced as the next James Bond actor by December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.",
+        "resolution_source": "official information from Amazon MGM Studios",
+        "end_time": "2027-01-01T04:59:00Z"
+      },
+      "expected_reason_fragments": [
+        "explicit deadline years differ"
+      ]
+    }
+  ]
+}
