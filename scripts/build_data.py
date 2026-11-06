@@ -29,7 +29,7 @@ STOP = {
 }
 WORD_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
-YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+DEADLINE_YEAR_RE = re.compile(r"\\b(?:before|by|until|through|no later than|deadline|expire(?:s|d)?|expiration)\\b.{0,48}?\\b((?:19|20)\\d{2})\\b", re.IGNORECASE)
 
 
 def get_json(url: str, params: dict | None = None, retries: int = 3):
@@ -67,6 +67,10 @@ def tokens(text: str) -> set[str]:
 
 def nums(text: str) -> set[str]:
     return set(NUM_RE.findall((text or "").lower()))
+
+
+def deadline_years(text: str) -> set[str]:
+    return set(DEADLINE_YEAR_RE.findall(text or ""))
 
 
 def parse_iso(value):
@@ -321,10 +325,10 @@ def semantic_conflicts(k, p):
     reasons = []
     ktext, ptext = _full_terms(k, p)
 
-    ky, py = set(YEAR_RE.findall(ktext)), set(YEAR_RE.findall(ptext))
+    ky, py = deadline_years(ktext), deadline_years(ptext)
     if ky and py and ky.isdisjoint(py):
         reasons.append(
-            "explicit horizon years differ "
+            "explicit deadline years differ "
             f"(Kalshi {', '.join(sorted(ky))}; Polymarket {', '.join(sorted(py))})"
         )
 
