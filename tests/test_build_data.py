@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import json
 
 spec = importlib.util.spec_from_file_location("build_data", Path(__file__).parents[1] / "scripts" / "build_data.py")
 b = importlib.util.module_from_spec(spec)
@@ -46,7 +47,7 @@ def test_semantic_horizon_conflict():
         "end_time": "2027-01-01T04:59:00Z",
     }
     reasons = b.semantic_conflicts(k, p)
-    assert any("horizon years differ" in x for x in reasons)
+    assert any("deadline years differ" in x for x in reasons)
 
 
 def test_semantic_interim_conflict():
@@ -104,3 +105,12 @@ def test_conflicted_pair_is_withheld():
     pairs, withheld = b.build_pairs(k,p)
     assert not pairs
     assert len(withheld) == 1
+
+
+def test_real_semantic_conflict_fixtures():
+    path = Path(__file__).parent / "fixtures" / "real_semantic_conflicts.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for case in data["cases"]:
+        reasons = b.semantic_conflicts(case["kalshi"], case["polymarket"])
+        for fragment in case["expected_reason_fragments"]:
+            assert any(fragment in reason for reason in reasons), (case["id"], fragment, reasons)
