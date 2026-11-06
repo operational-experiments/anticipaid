@@ -22,7 +22,7 @@ def test_conflicting_numbers_are_rejected():
 
 
 def test_one_sided_number_is_not_automatically_rejected():
-    assert b.match_score("Will X happen?", "Will X happen before 2028?") > 0
+    assert b.match_score("Will Acme launch?", "Will Acme launch before 2028?") > 0
 
 
 def test_similar_questions_match():
