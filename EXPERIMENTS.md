@@ -110,3 +110,22 @@ Polymarket:
 4. Measure precision/recall against a manually adjudicated candidate set before relaxing thresholds.
 5. Add historical snapshots so disagreement persistence and convergence can be studied rather than only current price gaps.
 6. Treat “no comparable candidates” as a valid result, not a reason to lower quality gates.
+
+---
+
+## E006 — Coverage caps are part of the result
+
+**Purpose.** Determine whether the initial 2,200 Kalshi / 2,000 Polymarket scan limits represented the available open-market universes.
+
+**Finding.**
+- Kalshi exceeded 10,000 open contracts before exhaustion, so the 2,200 limit materially truncated coverage.
+- Polymarket offset pagination failed with HTTP 422 beyond its deep-offset boundary rather than returning an empty page.
+
+**Conclusion.** A scanner that silently stops at configured page limits cannot claim exhaustive coverage.
+
+**Intervention.**
+- publish a per-source `truncated` flag;
+- display capped-source status publicly;
+- use Polymarket's keyset endpoint with `after_cursor` instead of deep offset pagination;
+- retain a high Kalshi safety ceiling while explicitly reporting when it is reached.
+
