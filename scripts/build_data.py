@@ -22,6 +22,7 @@ UA = "anticipaid/0.1 (+https://anticipaid.com)"
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
+POLY_KEYSET_URL = "https://gamma-api.polymarket.com/markets/keyset"
 STOP = {
     "a","an","and","are","as","at","be","before","by","did","do","does","for","from","has","have","how",
     "in","is","it","of","on","or","the","to","was","were","what","when","where","which","who","will","with",
@@ -161,27 +162,41 @@ def fetch_kalshi(max_items=10000):
 
 
 def fetch_poly(max_items=10000):
-    """Fetch active Polymarket markets with explicit truncation reporting."""
-    out, offset = [], 0
+    """Fetch active Polymarket markets using keyset pagination.
+
+    Gamma offset pagination hard-stops near 2,000 rows. The keyset endpoint
+    uses after_cursor and avoids that boundary.
+    """
+    out, cursor, seen = [], None, set()
     page_size = 100
     while True:
         remaining = max_items - len(out)
         if remaining <= 0:
             return out[:max_items], True
-        chunk = get_json(POLY_URL, {
-            "active": "true", "closed": "false",
+        params = {
+            "active": "true",
+            "closed": "false",
             "limit": min(page_size, remaining),
-            "offset": offset,
-            "order": "volumeNum", "ascending": "false"
-        })
-        if not isinstance(chunk, list) or not chunk:
+            "order": "id",
+            "ascending": "true",
+        }
+        if cursor:
+            params["after_cursor"] = cursor
+        page = get_json(POLY_KEYSET_URL, params)
+        if not isinstance(page, dict):
+            raise ValueError("unexpected Polymarket keyset response")
+        chunk = page.get("markets", []) or []
+        next_cursor = page.get("next_cursor")
+        if not chunk:
             return out, False
         out.extend(chunk)
-        offset += len(chunk)
-        if len(chunk) < page_size:
+        if not next_cursor:
             return out, False
-        if len(out) >= max_items:
-            return out[:max_items], True
+        if next_cursor in seen:
+            # Defensive loop guard: preserve partial coverage and surface it.
+            return out, True
+        seen.add(next_cursor)
+        cursor = next_cursor
 
 def canonical_kalshi(m):
     # Preserve parent-event context for display/disambiguation, but score
