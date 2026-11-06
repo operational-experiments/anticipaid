@@ -136,18 +136,23 @@ def fetch_kalshi(max_items=2200):
 
 
 def fetch_poly(max_items=2000):
+    # Gamma currently caps a response at 100 rows even when a larger limit is
+    # requested. Advance by the number actually returned; do not interpret a
+    # short page relative to our requested limit as end-of-data.
     out, offset = [], 0
+    page_size = 100
     while len(out) < max_items:
-        limit = min(500, max_items-len(out))
         chunk = get_json(POLY_URL, {
-            "active": "true", "closed": "false", "limit": limit, "offset": offset,
+            "active": "true", "closed": "false",
+            "limit": min(page_size, max_items-len(out)),
+            "offset": offset,
             "order": "volumeNum", "ascending": "false"
         })
         if not isinstance(chunk, list) or not chunk:
             break
         out.extend(chunk)
         offset += len(chunk)
-        if len(chunk) < limit:
+        if len(chunk) < page_size:
             break
     return out[:max_items]
 
