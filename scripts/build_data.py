@@ -27,7 +27,8 @@ POLY_KEYSET_URL = "https://gamma-api.polymarket.com/markets/keyset"
 STOP = {
     "a","an","and","are","as","at","be","before","by","did","do","does","for","from","has","have","how",
     "in","is","it","of","on","or","the","to","was","were","what","when","where","which","who","will","with",
-    "yes","no","market","markets","price","chance","probability"
+    "yes","no","market","markets","price","chance","probability",
+    "win","wins","winning","next","above","below","more","less","than","happen","happens","occur","occurs"
 }
 WORD_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
@@ -277,14 +278,26 @@ def match_score(a: str, b: str, a_deadline=None, b_deadline=None):
     return max(0.0, min(1.0, score))
 
 
-def diagnose_candidates(kalshi, poly, limit=20):
-    """Return strongest lexical near-matches with bounded memory."""
-    pindex = defaultdict(set)
+def build_candidate_index(poly):
+    """Index only discriminative tokens to avoid common-token candidate explosions."""
+    buckets = defaultdict(list)
     for i, p in enumerate(poly):
         for t in tokens(p["question"]):
-            if len(t) >= 3:
-                pindex[t].add(i)
+            if len(t) < 3 or t.isdigit():
+                continue
+            buckets[t].append(i)
 
+    max_df = max(200, min(500, max(1, len(poly) // 20)))
+    return {
+        token: tuple(ids)
+        for token, ids in buckets.items()
+        if len(ids) <= max_df
+    }
+
+
+def diagnose_candidates(kalshi, poly, limit=20):
+    """Return strongest lexical near-matches with bounded memory."""
+    pindex = build_candidate_index(poly)
     top = []
     serial = 0
     for k in kalshi:
@@ -374,11 +387,7 @@ def semantic_conflicts(k, p):
 
 
 def build_pairs(kalshi, poly):
-    pindex = defaultdict(set)
-    for i, p in enumerate(poly):
-        for t in tokens(p["question"]):
-            if len(t) >= 3:
-                pindex[t].add(i)
+    pindex = build_candidate_index(poly)
 
     matches, withheld = [], []
     used_poly = set()
