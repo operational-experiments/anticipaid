@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Test matcher
+        run: python -m pytest -q tests
       - name: Build market snapshot
         run: python scripts/build_data.py --output site/data/latest.json
       - name: Configure Pages
