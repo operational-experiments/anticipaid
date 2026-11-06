@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import difflib
+import heapq
 import json
 import math
 import re
@@ -277,13 +278,15 @@ def match_score(a: str, b: str, a_deadline=None, b_deadline=None):
 
 
 def diagnose_candidates(kalshi, poly, limit=20):
-    """Return the strongest lexical near-matches irrespective of publication threshold."""
+    """Return strongest lexical near-matches with bounded memory."""
     pindex = defaultdict(set)
     for i, p in enumerate(poly):
         for t in tokens(p["question"]):
             if len(t) >= 3:
                 pindex[t].add(i)
+
     top = []
+    serial = 0
     for k in kalshi:
         candidate_ids = defaultdict(int)
         for t in tokens(k.get("match_text") or k["title"]):
@@ -293,14 +296,22 @@ def diagnose_candidates(kalshi, poly, limit=20):
             if count < 2:
                 continue
             p = poly[i]
-            score = match_score(k.get("match_text") or k["title"], p["question"], k.get("close_time"), p.get("end_time"))
-            top.append((score, k["title"], p["question"]))
+            score = match_score(
+                k.get("match_text") or k["title"], p["question"],
+                k.get("close_time"), p.get("end_time")
+            )
+            item = (score, serial, k["title"], p["question"])
+            serial += 1
+            if len(top) < limit:
+                heapq.heappush(top, item)
+            elif score > top[0][0]:
+                heapq.heapreplace(top, item)
+
     top.sort(key=lambda x: x[0], reverse=True)
     return [
         {"score": round(score, 4), "kalshi": kt, "polymarket": pt}
-        for score, kt, pt in top[:limit]
+        for score, _, kt, pt in top
     ]
-
 
 def _full_terms(k, p):
     ktext = " ".join(x for x in [
