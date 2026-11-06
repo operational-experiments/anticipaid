@@ -23,7 +23,10 @@
     document.querySelector('#metric-markets').textContent = ((data.stats?.kalshi_open || 0) + (data.stats?.polymarket_open || 0)).toLocaleString();
     document.querySelector('#metric-updated').textContent = ageLabel(data.generated_at);
     const sources = data.sources || {};
-    const sourceState = [sources.kalshi?.ok ? 'Kalshi ✓' : 'Kalshi !', sources.polymarket?.ok ? 'Polymarket ✓' : 'Polymarket !'].join(' · ');
+    const sourceState = [
+      sources.kalshi?.ok ? (sources.kalshi?.truncated ? 'Kalshi capped' : 'Kalshi ✓') : 'Kalshi !',
+      sources.polymarket?.ok ? (sources.polymarket?.truncated ? 'Polymarket capped' : 'Polymarket ✓') : 'Polymarket !'
+    ].join(' · ');
     document.querySelector('#snapshot-status').textContent = `Snapshot ${ageLabel(data.generated_at)} old · ${sourceState}`;
   }
 
