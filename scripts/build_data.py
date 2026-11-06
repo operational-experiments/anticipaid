@@ -126,10 +126,14 @@ def poly_probability(m):
     return p if p is not None and 0 <= p <= 1 else None
 
 
-def fetch_kalshi(max_items=2200):
-    """Fetch open Kalshi markets together with parent event context."""
-    out, cursor = [], None
-    while len(out) < max_items:
+def fetch_kalshi(max_items=10000):
+    """Fetch open Kalshi markets with parent event context.
+
+    The safety ceiling is deliberately high. A returned truncation flag makes
+    any remaining coverage limit explicit in the public snapshot.
+    """
+    out, cursor, truncated = [], None, False
+    while True:
         params = {
             "limit": 200,
             "status": "open",
@@ -149,36 +153,35 @@ def fetch_kalshi(max_items=2200):
                 enriched["_event_category"] = event.get("category") or ""
                 out.append(enriched)
                 if len(out) >= max_items:
-                    break
-            if len(out) >= max_items:
-                break
+                    truncated = bool(page.get("cursor"))
+                    return out[:max_items], truncated
         cursor = page.get("cursor")
         if not cursor or not events:
-            break
-    return out[:max_items]
+            return out, False
 
 
-def fetch_poly(max_items=2000):
-    # Gamma currently caps a response at 100 rows even when a larger limit is
-    # requested. Advance by the number actually returned; do not interpret a
-    # short page relative to our requested limit as end-of-data.
+def fetch_poly(max_items=10000):
+    """Fetch active Polymarket markets with explicit truncation reporting."""
     out, offset = [], 0
     page_size = 100
-    while len(out) < max_items:
+    while True:
+        remaining = max_items - len(out)
+        if remaining <= 0:
+            return out[:max_items], True
         chunk = get_json(POLY_URL, {
             "active": "true", "closed": "false",
-            "limit": min(page_size, max_items-len(out)),
+            "limit": min(page_size, remaining),
             "offset": offset,
             "order": "volumeNum", "ascending": "false"
         })
         if not isinstance(chunk, list) or not chunk:
-            break
+            return out, False
         out.extend(chunk)
         offset += len(chunk)
         if len(chunk) < page_size:
-            break
-    return out[:max_items]
-
+            return out, False
+        if len(out) >= max_items:
+            return out[:max_items], True
 
 def canonical_kalshi(m):
     # Preserve parent-event context for display/disambiguation, but score
@@ -420,13 +423,13 @@ def main():
     source = {"kalshi": {"ok": False}, "polymarket": {"ok": False}}
     raw_k, raw_p = [], []
     try:
-        raw_k = fetch_kalshi()
-        source["kalshi"] = {"ok": True, "count": len(raw_k)}
+        raw_k, k_truncated = fetch_kalshi()
+        source["kalshi"] = {"ok": True, "count": len(raw_k), "truncated": k_truncated}
     except Exception as e:
         source["kalshi"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
     try:
-        raw_p = fetch_poly()
-        source["polymarket"] = {"ok": True, "count": len(raw_p)}
+        raw_p, p_truncated = fetch_poly()
+        source["polymarket"] = {"ok": True, "count": len(raw_p), "truncated": p_truncated}
     except Exception as e:
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
 
