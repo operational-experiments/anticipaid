@@ -29,7 +29,7 @@ STOP = {
 }
 WORD_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
-DEADLINE_YEAR_RE = re.compile(r"\\b(?:before|by|until|through|no later than|deadline|expire(?:s|d)?|expiration)\\b.{0,48}?\\b((?:19|20)\\d{2})\\b", re.IGNORECASE)
+DEADLINE_YEAR_RE = re.compile(r"\b(?:before|by|until|through|no later than|deadline|expire(?:s|d)?|expiration)\b.{0,48}?\b((?:19|20)\d{2})\b", re.IGNORECASE)
 
 
 def get_json(url: str, params: dict | None = None, retries: int = 3):
