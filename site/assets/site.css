@@ -105,3 +105,9 @@ footer a { text-decoration: none; }
   .method-grid article { padding: 22px 0; margin: 0 !important; }
   footer { flex-direction: column; }
 }
+
+.notice.neutral { border-left-color: var(--muted); background: rgba(23,24,22,.035); }
+.review-panel { margin-top: -55px; }
+.reason-list { margin: 0; padding-left: 1.1rem; color: #45423d; font-size: .86rem; }
+.reason-list li + li { margin-top: 5px; }
+.review-panel .question small { display: block; margin-top: 5px; }
