@@ -214,6 +214,32 @@ def match_score(a: str, b: str, a_deadline=None, b_deadline=None):
     return max(0.0, min(1.0, score))
 
 
+def diagnose_candidates(kalshi, poly, limit=20):
+    """Return the strongest lexical near-matches irrespective of publication threshold."""
+    pindex = defaultdict(set)
+    for i, p in enumerate(poly):
+        for t in tokens(p["question"]):
+            if len(t) >= 3:
+                pindex[t].add(i)
+    top = []
+    for k in kalshi:
+        candidate_ids = defaultdict(int)
+        for t in tokens(k["title"]):
+            for i in pindex.get(t, ()):
+                candidate_ids[i] += 1
+        for i, count in candidate_ids.items():
+            if count < 2:
+                continue
+            p = poly[i]
+            score = match_score(k["title"], p["question"], k.get("close_time"), p.get("end_time"))
+            top.append((score, k["title"], p["question"]))
+    top.sort(key=lambda x: x[0], reverse=True)
+    return [
+        {"score": round(score, 4), "kalshi": kt, "polymarket": pt}
+        for score, kt, pt in top[:limit]
+    ]
+
+
 def build_pairs(kalshi, poly):
     pindex = defaultdict(set)
     for i, p in enumerate(poly):
@@ -276,6 +302,8 @@ def main():
     k = [x for x in (canonical_kalshi(m) for m in raw_k) if x]
     p = [x for x in (canonical_poly(m) for m in raw_p) if x]
     pairs = build_pairs(k, p) if k and p else []
+    diagnostics = diagnose_candidates(k, p) if k and p else []
+    print(json.dumps({"top_candidate_scores": diagnostics}, indent=2))
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
         "method_version": "lexical-candidate-v1",
