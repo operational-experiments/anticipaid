@@ -20,6 +20,7 @@ from pathlib import Path
 
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
+KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
 STOP = {
     "a","an","and","are","as","at","be","before","by","did","do","does","for","from","has","have","how",
@@ -121,16 +122,33 @@ def poly_probability(m):
 
 
 def fetch_kalshi(max_items=2200):
+    """Fetch open Kalshi markets together with parent event context."""
     out, cursor = [], None
     while len(out) < max_items:
-        params = {"limit": min(1000, max_items-len(out)), "status": "open", "mve_filter": "exclude"}
+        params = {
+            "limit": 200,
+            "status": "open",
+            "with_nested_markets": "true",
+        }
         if cursor:
             params["cursor"] = cursor
-        page = get_json(KALSHI_URL, params)
-        chunk = page.get("markets", [])
-        out.extend(chunk)
+        page = get_json(KALSHI_EVENTS_URL, params)
+        events = page.get("events", [])
+        for event in events:
+            for market in event.get("markets", []) or []:
+                if market.get("status") not in (None, "open", "active"):
+                    continue
+                enriched = dict(market)
+                enriched["_event_title"] = event.get("title") or ""
+                enriched["_event_sub_title"] = event.get("sub_title") or ""
+                enriched["_event_category"] = event.get("category") or ""
+                out.append(enriched)
+                if len(out) >= max_items:
+                    break
+            if len(out) >= max_items:
+                break
         cursor = page.get("cursor")
-        if not cursor or not chunk:
+        if not cursor or not events:
             break
     return out[:max_items]
 
@@ -158,7 +176,13 @@ def fetch_poly(max_items=2000):
 
 
 def canonical_kalshi(m):
-    title = " ".join(x for x in [m.get("title"), m.get("subtitle"), m.get("yes_sub_title")] if x)
+    # Parent-event context is critical: many Kalshi market titles are terse
+    # outcome labels whose meaning is only clear inside the event.
+    fields = [
+        m.get("_event_title"), m.get("_event_sub_title"),
+        m.get("title"), m.get("subtitle"), m.get("yes_sub_title")
+    ]
+    title = " ".join(dict.fromkeys(x.strip() for x in fields if isinstance(x, str) and x.strip()))
     p = kalshi_probability(m)
     if p is None or not title:
         return None
