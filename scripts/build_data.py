@@ -23,6 +23,7 @@ UA = "anticipaid/0.1 (+https://anticipaid.com)"
 METHOD_VERSION = "lexical-semantic-adjudicated-v4"
 MATCH_THRESHOLD = 0.76
 KALSHI_FETCH_LIMIT = 10000
+KALSHI_EVENT_CATALOG_LIMIT = 10000
 POLY_FETCH_LIMIT = 10000
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
@@ -178,6 +179,95 @@ def fetch_kalshi(max_items=KALSHI_FETCH_LIMIT):
         cursor = page.get("cursor")
         if not cursor or not events:
             return out, False
+
+
+def fetch_kalshi_event_catalog(max_events=KALSHI_EVENT_CATALOG_LIMIT):
+    """Fetch lightweight open-event metadata without nested market payloads."""
+    out, cursor = [], None
+    while len(out) < max_events:
+        params = {
+            "limit": min(200, max_events - len(out)),
+            "status": "open",
+            "with_nested_markets": "false",
+        }
+        if cursor:
+            params["cursor"] = cursor
+        page = get_json(KALSHI_EVENTS_URL, params)
+        events = page.get("events", []) or []
+        out.extend(events)
+        cursor = page.get("cursor")
+        if not cursor or not events:
+            return out, False
+    return out[:max_events], bool(cursor)
+
+
+def select_candidate_event_tickers(events, raw_poly):
+    """Select Kalshi event families sharing >=2 discriminative tokens with one Polymarket question."""
+    buckets = defaultdict(list)
+    for i, market in enumerate(raw_poly):
+        question = market.get("question") or market.get("title") or ""
+        for token in tokens(question):
+            if len(token) >= 3 and not token.isdigit():
+                buckets[token].append(i)
+    max_df = max(200, min(500, max(1, len(raw_poly) // 20)))
+    pindex = {token: ids for token, ids in buckets.items() if len(ids) <= max_df}
+
+    selected = []
+    for event in events:
+        text = " ".join(x for x in [event.get("title"), event.get("sub_title")] if x)
+        candidate_ids = defaultdict(int)
+        for token in tokens(text):
+            if token.isdigit():
+                continue
+            for i in pindex.get(token, ()):
+                candidate_ids[i] += 1
+        if any(count >= 2 for count in candidate_ids.values()):
+            ticker = event.get("event_ticker")
+            if ticker:
+                selected.append(str(ticker))
+    return selected
+
+
+def fetch_kalshi_events_by_tickers(tickers, batch_size=25):
+    """Fetch nested markets only for selected event families."""
+    out = []
+    for start in range(0, len(tickers), batch_size):
+        batch = tickers[start:start + batch_size]
+        page = get_json(KALSHI_EVENTS_URL, {
+            "limit": min(200, max(1, len(batch))),
+            "status": "open",
+            "with_nested_markets": "true",
+            "tickers": ",".join(batch),
+        })
+        for event in page.get("events", []) or []:
+            for market in event.get("markets", []) or []:
+                if market.get("status") not in (None, "open", "active"):
+                    continue
+                enriched = dict(market)
+                enriched["_event_title"] = event.get("title") or ""
+                enriched["_event_sub_title"] = event.get("sub_title") or ""
+                enriched["_event_category"] = event.get("category") or ""
+                out.append(enriched)
+    return out
+
+
+def enrich_kalshi_from_event_catalog(raw_kalshi, raw_poly):
+    events, catalog_truncated = fetch_kalshi_event_catalog()
+    tickers = select_candidate_event_tickers(events, raw_poly)
+    extra = fetch_kalshi_events_by_tickers(tickers)
+    merged = {str(m.get("ticker") or ""): m for m in raw_kalshi if m.get("ticker")}
+    baseline_count = len(merged)
+    for market in extra:
+        ticker = str(market.get("ticker") or "")
+        if ticker:
+            merged[ticker] = market
+    return list(merged.values()), {
+        "event_catalog_count": len(events),
+        "event_catalog_truncated": catalog_truncated,
+        "candidate_event_count": len(tickers),
+        "nested_markets_fetched": len(extra),
+        "new_markets_added": len(merged) - baseline_count,
+    }
 
 
 def fetch_poly(max_items=POLY_FETCH_LIMIT):
@@ -608,6 +698,17 @@ def main():
         }
     except Exception as e:
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
+
+    if raw_k and raw_p:
+        try:
+            raw_k, enrichment = enrich_kalshi_from_event_catalog(raw_k, raw_p)
+            source["kalshi"]["event_index_enrichment"] = enrichment
+            source["kalshi"]["effective_count"] = len(raw_k)
+        except Exception as exc:
+            source["kalshi"]["event_index_enrichment"] = {
+                "ok": False,
+                "error": f"{type(exc).__name__}: {exc}"[:240],
+            }
 
     coverage = audit_adjudication_coverage(args.adjudications, raw_k, raw_p)
     approved_pairs = load_adjudicated_equivalent_pairs(args.adjudications)
