@@ -125,6 +125,12 @@
                   "string",
                   "null"
                 ]
+              },
+              "expected_expiration_time": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             }
           },
