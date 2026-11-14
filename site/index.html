@@ -43,7 +43,7 @@
     </section>
 
     <section class="metric-row" aria-label="Snapshot metrics">
-      <article><span class="metric" id="metric-pairs">—</span><span class="metric-label">unblocked candidates</span></article>
+      <article><span class="metric" id="metric-pairs">—</span><span class="metric-label">adjudicated comparisons</span></article>
       <article><span class="metric" id="metric-withheld">—</span><span class="metric-label">withheld by semantic guards</span></article>
       <article><span class="metric" id="metric-markets">—</span><span class="metric-label">open markets scanned</span></article>
       <article><span class="metric" id="metric-updated">—</span><span class="metric-label">snapshot age</span></article>
@@ -52,8 +52,8 @@
     <section class="panel" id="disagreements">
       <div class="section-head">
         <div>
-          <div class="eyebrow">semantically unblocked candidates</div>
-          <h2>Where markets may disagree</h2>
+          <div class="eyebrow">adjudicated equivalents</div>
+          <h2>Where equivalent markets disagree</h2>
         </div>
         <div class="control-group">
           <label for="min-gap">Minimum gap</label>
@@ -67,7 +67,7 @@
       </div>
 
       <div class="notice">
-        <strong>Important:</strong> rows appear here only after lexical discovery and deterministic incompatibility checks. Passing those checks is still <em>not</em> proof of identical settlement semantics. The system is optimized to withhold questionable comparisons rather than manufacture arbitrage.
+        <strong>Important:</strong> rows appear here only after manual adjudication that the contracts are sufficiently settlement-equivalent for probability comparison. Automated discovery and semantic guards feed the review queue; they do not authorize publication on their own.
       </div>
 
       <div class="table-wrap">
@@ -97,7 +97,7 @@
         </div>
       </div>
       <div class="notice neutral">
-        High lexical similarity is not enough. These candidates were withheld because the automated semantic guard found concrete reasons not to compare their prices as the same proposition.
+        High lexical similarity is not enough. This queue contains candidates withheld because a semantic conflict was detected or because equivalence has not yet been adjudicated.
       </div>
       <div class="table-wrap">
         <table>
@@ -157,8 +157,8 @@
         </article>
         <article>
           <span class="step">04</span>
-          <h3>Publish carefully</h3>
-          <p>Only unblocked candidates get price-gap treatment. The review queue preserves rejected candidates and the reasons for rejection.</p>
+          <h3>Adjudicate</h3>
+          <p>Only manually adjudicated equivalent pairs get price-gap treatment. Automated candidates remain in the review queue until evidence justifies promotion.</p>
         </article>
       </div>
     </section>
