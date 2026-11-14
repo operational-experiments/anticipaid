@@ -19,6 +19,54 @@ def ratio(num, den):
     return None if den == 0 else num / den
 
 
+ALLOWED_LABELS = {"equivalent", "not_equivalent"}
+ALLOWED_CONFIDENCE = {"low", "medium", "high"}
+
+
+def validate_corpus(corpus):
+    if not isinstance(corpus, dict):
+        raise ValueError("corpus must be an object")
+    if corpus.get("schema_version") != "1.0":
+        raise ValueError("unsupported adjudication schema_version")
+    if not corpus.get("corpus_version"):
+        raise ValueError("corpus_version is required")
+    cases = corpus.get("cases")
+    if not isinstance(cases, list):
+        raise ValueError("cases must be an array")
+
+    seen = set()
+    for i, case in enumerate(cases):
+        if not isinstance(case, dict):
+            raise ValueError(f"case {i} must be an object")
+        case_id = case.get("case_id")
+        if not isinstance(case_id, str) or not case_id:
+            raise ValueError(f"case {i} missing case_id")
+        if case_id in seen:
+            raise ValueError(f"duplicate case_id: {case_id}")
+        seen.add(case_id)
+
+        if case.get("label") not in ALLOWED_LABELS:
+            raise ValueError(f"{case_id}: invalid label")
+        if case.get("confidence") not in ALLOWED_CONFIDENCE:
+            raise ValueError(f"{case_id}: invalid confidence")
+        if not isinstance(case.get("source_urls"), list) or len(case["source_urls"]) < 2:
+            raise ValueError(f"{case_id}: at least two source_urls required")
+        if not isinstance(case.get("rationale_tags"), list) or not case["rationale_tags"]:
+            raise ValueError(f"{case_id}: rationale_tags required")
+        if not isinstance(case.get("rationale"), str) or not case["rationale"]:
+            raise ValueError(f"{case_id}: rationale required")
+
+        k = case.get("kalshi")
+        p = case.get("polymarket")
+        if not isinstance(k, dict) or not isinstance(p, dict):
+            raise ValueError(f"{case_id}: kalshi and polymarket objects required")
+        if not k.get("id") or not k.get("match_text"):
+            raise ValueError(f"{case_id}: Kalshi id and match_text required")
+        if not p.get("id") or not p.get("question"):
+            raise ValueError(f"{case_id}: Polymarket id and question required")
+    return corpus
+
+
 def evaluate_case(case):
     k, p = case["kalshi"], case["polymarket"]
     score = matcher.match_score(
@@ -53,6 +101,7 @@ def evaluate_case(case):
 
 
 def evaluate(corpus):
+    validate_corpus(corpus)
     rows = [evaluate_case(case) for case in corpus["cases"]]
     tp = sum(r["gold_label"] == "equivalent" and r["prediction"] == "publish_candidate" for r in rows)
     fn = sum(r["gold_label"] == "equivalent" and r["prediction"] != "publish_candidate" for r in rows)
