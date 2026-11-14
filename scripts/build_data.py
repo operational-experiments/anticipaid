@@ -215,6 +215,75 @@ def fetch_poly(max_items=10000):
         seen.add(next_cursor)
         cursor = next_cursor
 
+def _probe_kalshi_market(market_id):
+    try:
+        payload = get_json(f"{KALSHI_URL}/{urllib.parse.quote(str(market_id))}")
+        market = payload.get("market", payload) if isinstance(payload, dict) else {}
+        status = str(market.get("status") or "").lower()
+        return {"ok": True, "active": status in {"open", "active"}, "status": status or None}
+    except Exception as exc:
+        return {"ok": False, "active": None, "error": f"{type(exc).__name__}: {exc}"[:180]}
+
+
+def _probe_poly_market(market_id):
+    try:
+        market = get_json(f"{POLY_URL}/{urllib.parse.quote(str(market_id))}")
+        if not isinstance(market, dict):
+            raise ValueError("unexpected market response")
+        active = bool(market.get("active")) and not bool(market.get("closed"))
+        return {"ok": True, "active": active, "closed": bool(market.get("closed"))}
+    except Exception as exc:
+        return {"ok": False, "active": None, "error": f"{type(exc).__name__}: {exc}"[:180]}
+
+
+def audit_adjudication_coverage(corpus_path, raw_kalshi, raw_poly):
+    path = Path(corpus_path)
+    if not path.exists():
+        return None
+
+    corpus = json.loads(path.read_text(encoding="utf-8"))
+    kalshi_bulk = {str(m.get("ticker") or "") for m in raw_kalshi}
+    poly_bulk = {
+        str(m.get("id") or m.get("conditionId") or "")
+        for m in raw_poly
+    }
+
+    rows = []
+    for case in corpus.get("cases", []):
+        kid = str((case.get("kalshi") or {}).get("id") or "")
+        pid = str((case.get("polymarket") or {}).get("id") or "")
+        kp = _probe_kalshi_market(kid) if kid else {"ok": False, "active": None, "error": "missing id"}
+        pp = _probe_poly_market(pid) if pid else {"ok": False, "active": None, "error": "missing id"}
+        eligible = kp.get("active") is True and pp.get("active") is True
+        k_present = kid in kalshi_bulk
+        p_present = pid in poly_bulk
+        rows.append({
+            "case_id": case.get("case_id"),
+            "label": case.get("label"),
+            "kalshi_id": kid,
+            "polymarket_id": pid,
+            "kalshi_probe": kp,
+            "polymarket_probe": pp,
+            "eligible_active_pair": eligible,
+            "kalshi_in_bulk": k_present,
+            "polymarket_in_bulk": p_present,
+            "both_in_bulk": k_present and p_present,
+        })
+
+    eligible_rows = [r for r in rows if r["eligible_active_pair"]]
+    covered = sum(r["both_in_bulk"] for r in eligible_rows)
+    return {
+        "corpus_version": corpus.get("corpus_version"),
+        "case_count": len(rows),
+        "eligible_active_pairs": len(eligible_rows),
+        "eligible_both_in_bulk": covered,
+        "eligible_bulk_coverage": (
+            None if not eligible_rows else covered / len(eligible_rows)
+        ),
+        "cases": rows,
+    }
+
+
 def canonical_kalshi(m):
     # Preserve parent-event context for display/disambiguation, but score
     # explicit question-like market propositions on their own wording. This
@@ -485,6 +554,7 @@ def build_pairs(kalshi, poly):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", default="site/data/latest.json")
+    ap.add_argument("--adjudications", default="data/adjudications.json")
     args = ap.parse_args()
 
     source = {"kalshi": {"ok": False}, "polymarket": {"ok": False}}
@@ -500,6 +570,7 @@ def main():
     except Exception as e:
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
 
+    coverage = audit_adjudication_coverage(args.adjudications, raw_k, raw_p)
     k = [x for x in (canonical_kalshi(m) for m in raw_k) if x]
     p = [x for x in (canonical_poly(m) for m in raw_p) if x]
     if k and p:
@@ -518,13 +589,19 @@ def main():
             "withheld_candidates": len(withheld),
         },
         "sources": source,
+        "adjudication_coverage": coverage,
         "pairs": pairs,
         "withheld_candidates": withheld,
     }
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"output": str(out), "stats": payload["stats"], "sources": source}, indent=2))
+    print(json.dumps({
+        "output": str(out),
+        "stats": payload["stats"],
+        "sources": source,
+        "adjudication_coverage": coverage,
+    }, indent=2))
     if not (source["kalshi"]["ok"] or source["polymarket"]["ok"]):
         raise SystemExit(2)
 
