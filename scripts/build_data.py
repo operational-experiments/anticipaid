@@ -22,10 +22,11 @@ from pathlib import Path
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
 METHOD_VERSION = "lexical-semantic-adjudicated-v4"
 MATCH_THRESHOLD = 0.76
+EVENT_MATCH_THRESHOLD = 0.65
 KALSHI_FETCH_LIMIT = 10000
-KALSHI_EVENT_CATALOG_LIMIT = 10000
+KALSHI_EVENT_CATALOG_LIMIT = 50000
 POLY_FETCH_LIMIT = 10000
-ENABLE_EVENT_INDEX_ENRICHMENT = False
+ENABLE_EVENT_INDEX_ENRICHMENT = True
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
@@ -204,10 +205,12 @@ def fetch_kalshi_event_catalog(max_events=KALSHI_EVENT_CATALOG_LIMIT):
 
 
 def select_candidate_event_tickers(events, raw_poly):
-    """Select Kalshi event families sharing >=2 discriminative tokens with one Polymarket question."""
+    """Select event families only when an event is proposition-similar to a Polymarket question."""
     buckets = defaultdict(list)
+    questions = []
     for i, market in enumerate(raw_poly):
         question = market.get("question") or market.get("title") or ""
+        questions.append(question)
         for token in tokens(question):
             if len(token) >= 3 and not token.isdigit():
                 buckets[token].append(i)
@@ -216,19 +219,27 @@ def select_candidate_event_tickers(events, raw_poly):
 
     selected = []
     for event in events:
-        text = " ".join(x for x in [event.get("title"), event.get("sub_title")] if x)
+        event_text = " ".join(x for x in [event.get("title"), event.get("sub_title")] if x)
         candidate_ids = defaultdict(int)
-        for token in tokens(text):
+        for token in tokens(event_text):
             if token.isdigit():
                 continue
             for i in pindex.get(token, ()):
                 candidate_ids[i] += 1
-        if any(count >= 2 for count in candidate_ids.values()):
+
+        best_score = 0.0
+        for i, count in candidate_ids.items():
+            if count < 2:
+                continue
+            best_score = max(best_score, match_score(event_text, questions[i]))
+            if best_score >= EVENT_MATCH_THRESHOLD:
+                break
+
+        if best_score >= EVENT_MATCH_THRESHOLD:
             ticker = event.get("event_ticker")
             if ticker:
                 selected.append(str(ticker))
     return selected
-
 
 def fetch_kalshi_events_by_tickers(tickers, batch_size=25):
     """Fetch nested markets only for selected event families."""
