@@ -42,6 +42,7 @@ PHRASE_ALIASES = (
     (re.compile(r"\bnational football league\b", re.IGNORECASE), "nfl"),
     (re.compile(r"\bpro football\b", re.IGNORECASE), "nfl"),
     (re.compile(r"\bnfl league\b", re.IGNORECASE), "nfl"),
+    (re.compile(r"\bchampionship\b", re.IGNORECASE), "champion"),
 )
 
 
