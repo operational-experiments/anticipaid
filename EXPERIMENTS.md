@@ -199,3 +199,52 @@ Neither defect justified lowering the global lexical threshold.
 - Accuracy=1.0, specificity=1.0, precision=1.0, recall=1.0, F1=1.0 on the current five-case corpus.
 
 **Conclusion.** The first recall improvement came from better representation, not a looser decision boundary. The perfect five-case score is not evidence of generalization; it is evidence that the identified defects were repaired without breaking the existing negative controls. Corpus expansion remains the next requirement before any broader matcher claim.
+
+---
+
+## E009 — Source recall and publication authority are separate failure modes
+
+**Purpose.** Determine whether the missing Buffalo positive was a matcher failure or an ingestion failure, then test whether simply increasing the Kalshi bulk ceiling improves useful coverage.
+
+**Measurement.**
+The production build now directly probes every adjudicated contract ID and separately records whether each active gold contract was present in the bulk source scan.
+
+At the 10,000-market Kalshi ceiling:
+- 5/5 adjudicated pairs were directly confirmed active on both venues.
+- Polymarket bulk contained all five adjudicated markets.
+- Kalshi bulk contained four of five.
+- Buffalo (`KXSB-27-BUF`) was active but absent from Kalshi bulk.
+- active-gold bulk coverage = 0.8.
+
+**20,000-market Kalshi probe.**
+- Runtime grew from roughly two minutes to roughly four minutes.
+- Kalshi still returned exactly 20,000 records with `truncated=true`.
+- Buffalo was still absent.
+- active-gold bulk coverage remained 0.8.
+- The larger prefix surfaced 39 lexically strong, semantically unblocked candidates.
+
+**Critical failure.**
+Manual inspection showed many of those 39 were not equivalent:
+- presidential nominee vs vice-presidential nominee;
+- election winner vs runoff qualification;
+- impeachment vs impeachment-and-removal;
+- other superficially similar but materially different propositions.
+
+The automated semantic non-rejection layer therefore did not have enough precision to authorize publication.
+
+**Intervention: v4 publication gate.**
+- Keep automated lexical discovery and semantic guards as candidate-generation machinery.
+- Quarantine every non-adjudicated pair in the review queue.
+- Only a pair labeled `equivalent` in the versioned adjudication corpus may enter the public price-gap table.
+- A semantic conflict still overrides adjudication and withholds the pair, making matcher regressions visible.
+- Revert the unproductive Kalshi ceiling from 20,000 to 10,000 while a coverage-aware acquisition strategy is developed.
+
+**Result.**
+- 21 tests pass.
+- Gold matcher evaluation remains TP=1, TN=4, FP=0, FN=0.
+- Production source coverage remains 4/5 active adjudicated pairs.
+- Public comparable pairs = 0 because the sole approved positive is absent from the current Kalshi bulk prefix.
+- Previously exposed false comparisons are no longer publishable.
+
+**Conclusion.**
+Matcher quality and source recall must be measured independently. Increasing an arbitrary prefix did not improve gold source recall and increased review noise. More importantly, “no known contradiction” is not strong enough evidence for publication. The next acquisition experiment should operate at the event level and retrieve candidate event markets deliberately rather than increasing a market-count ceiling.
