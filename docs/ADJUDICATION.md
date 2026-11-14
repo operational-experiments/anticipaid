@@ -2,14 +2,14 @@
 
 Anticipaid separates **candidate discovery** from **settlement equivalence**.
 
-`data/adjudications.json` is the versioned gold corpus used to evaluate the publication gate. Each case contains the contract text used by the matcher, source URLs, an explicit label, rationale, and confidence.
+`data/adjudications.json` is the versioned gold corpus used to evaluate the publication gate. `data/adjudications.schema.json` formally specifies its structure using JSON Schema draft 2020-12. Each case contains the contract text used by the matcher, source URLs, an explicit label, rationale, and confidence.
 
 ## Labels
 
 - `equivalent`: the two contracts have been manually reviewed and are sufficiently settlement-equivalent for a price comparison.
 - `not_equivalent`: a material difference makes the prices non-comparable as the same proposition.
 
-No `unknown` case belongs in the gold corpus; unresolved candidates remain in the public review queue instead.
+No `unknown` case belongs in the gold corpus; unresolved candidates remain in the public review queue instead. Runtime validation additionally rejects unsupported labels, duplicate case IDs, malformed venue records, missing rationale, and underspecified source provenance before any metric is computed.
 
 ## Metrics
 
