@@ -3,6 +3,7 @@
   const fmtGap = p => Number.isFinite(p) ? `${Math.round(p * 100)} pts` : '—';
   const escapeHtml = s => String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const safeUrl = u => /^https:\/\//.test(String(u || '')) ? u : '#';
+  const fmtMetric = v => v == null ? 'n/a' : `${Math.round(v * 100)}%`;
 
   let snapshot = null;
 
@@ -77,6 +78,32 @@
       </tr>`).join('');
   }
 
+  function renderEvaluation(data) {
+    document.querySelector('#eval-cases').textContent = Number(data.case_count || 0).toLocaleString();
+    document.querySelector('#eval-specificity').textContent = fmtMetric(data.metrics?.specificity);
+    document.querySelector('#eval-precision').textContent = fmtMetric(data.metrics?.precision);
+    document.querySelector('#eval-recall').textContent = fmtMetric(data.metrics?.recall);
+
+    const equivalent = data.label_counts?.equivalent || 0;
+    const nonEquivalent = data.label_counts?.not_equivalent || 0;
+    const version = data.corpus_version || 'unknown';
+    const note = equivalent === 0
+      ? `Corpus ${version}: ${nonEquivalent} non-equivalent cases, no adjudicated equivalent cases yet. Positive precision and recall are intentionally undefined, not zero.`
+      : `Corpus ${version}: ${equivalent} equivalent and ${nonEquivalent} non-equivalent adjudicated cases.`;
+    document.querySelector('#eval-note').textContent = note;
+  }
+
+  async function loadEvaluation() {
+    try {
+      const res = await fetch(`data/evaluation.json?v=${Date.now()}`, {cache: 'no-store'});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      renderEvaluation(await res.json());
+    } catch (err) {
+      document.querySelector('#eval-note').textContent = 'Matcher evaluation unavailable for this build.';
+      console.error(err);
+    }
+  }
+
   async function boot() {
     try {
       const res = await fetch(`data/latest.json?v=${Date.now()}`, {cache: 'no-store'});
@@ -85,6 +112,7 @@
       renderMetrics(snapshot);
       renderPairs();
       renderWithheld();
+      loadEvaluation();
     } catch (err) {
       document.querySelector('#snapshot-status').textContent = 'Snapshot unavailable · deployment may still be warming up';
       document.querySelector('#pairs-body').innerHTML = `<tr><td colspan="5" class="empty-cell">No generated snapshot is available yet.</td></tr>`;
