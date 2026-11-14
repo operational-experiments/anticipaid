@@ -20,7 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
-METHOD_VERSION = "lexical-semantic-normalization-v3"
+METHOD_VERSION = "lexical-semantic-adjudicated-v4"
 MATCH_THRESHOLD = 0.76
 KALSHI_FETCH_LIMIT = 20000
 POLY_FETCH_LIMIT = 10000
