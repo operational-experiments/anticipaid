@@ -20,6 +20,8 @@ from collections import defaultdict
 from pathlib import Path
 
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
+METHOD_VERSION = "lexical-plus-semantic-guard-v2"
+MATCH_THRESHOLD = 0.76
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
@@ -408,7 +410,7 @@ def build_pairs(kalshi, poly):
                 k.get("match_text") or k["title"], p["question"],
                 k.get("close_time"), p.get("end_time")
             )
-            if score < 0.76:
+            if score < MATCH_THRESHOLD:
                 continue
             gap = abs(k["probability"] - p["probability"])
             conflicts = semantic_conflicts(k, p)
@@ -478,7 +480,7 @@ def main():
     print(json.dumps({"top_candidate_scores": diagnostics}, indent=2))
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "method_version": "lexical-plus-semantic-guard-v2",
+        "method_version": METHOD_VERSION,
         "stats": {
             "kalshi_open": len(k),
             "polymarket_open": len(p),
