@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "corpus_version": "2026-11-14.1",
+  "corpus_version": "2026-11-14.2",
   "description": "Versioned manual adjudications used to evaluate whether Anticipaid should publish a cross-venue comparison.",
   "cases": [
     {
@@ -66,6 +66,105 @@
         "description": "This market will resolve to “Yes” if the listed actor is officially announced as the next James Bond actor by December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.",
         "resolution_source": "official information from Amazon MGM Studios",
         "end_time": "2027-01-01T04:59:00Z"
+      }
+    },
+    {
+      "case_id": "australia-pm-jim-chalmers-2026-11-14",
+      "label": "not_equivalent",
+      "confidence": "high",
+      "adjudicated_at": "2026-11-14T06:20:00Z",
+      "adjudicator": "project-audit",
+      "rationale_tags": [
+        "deadline",
+        "repeat-election-handling",
+        "government-formation"
+      ],
+      "rationale": "Both contracts target the Prime Minister formed after the next Australian federal election and exclude caretaker/acting holdovers, but their backstops materially diverge. Polymarket falls to Other if no qualifying PM is sworn in by June 30, 2029. Kalshi runs to September 23, 2029 and resolves all named candidates No immediately if a new election is called before government formation.",
+      "source_urls": [
+        "https://external-api.kalshi.com/trade-api/v2/markets/KXAUSTPM-28SEP23-JCHA",
+        "https://gamma-api.polymarket.com/events?slug=who-will-be-the-next-prime-minister-of-australia-after-the-next-election-20260610170604224"
+      ],
+      "kalshi": {
+        "id": "KXAUSTPM-28SEP23-JCHA",
+        "match_text": "Will Jim Chalmers become Prime Minister of Australia following the next Australian federal election for the House of Representatives?",
+        "context": "Who will be Prime Minister of Australia following the next Australian federal election?",
+        "rules_primary": "If Jim Chalmers becomes Prime Minister of Australia as a result of government formation following the next Australian federal election for the House of Representatives and meets all constitutional requirements before Sep 23, 2029, then the market resolves to Yes.",
+        "rules_secondary": "The market resolves to the first person who, as a result of government formation following the election, is formally appointed, sworn in, or invested as Prime Minister according to the country's constitutional procedures, commands the confidence of the parliament/legislature, and exercises the full powers of the office (not serving in a caretaker/acting capacity from the previous government). If no government forms by Sep 23, 2029, the Contract resolves to \"No one\" if that is an option and No for all other strikes. If new elections are called before government formation, the Contract resolves to \"No one\" immediately and No for all other strikes.",
+        "early_close_condition": "This market will close and expire early if a person is formally appointed and invested as Prime Minister.",
+        "close_time": "2029-09-23T14:00:00Z"
+      },
+      "polymarket": {
+        "id": "2494671",
+        "question": "Will Jim Chalmers be Prime Minister of Australia after the next election?",
+        "description": "Legislative elections are scheduled to be held in Australia by September 23, 2028. This market will resolve to the next individual who is officially appointed and sworn in as Prime Minister of Australia following the 2028 parliamentary election. If an election is called early, this market will immediately resolve to the individual who is officially appointed and sworn in after that election. To count for resolution, the individual must be formally sworn in. Any interim or caretaker Prime Minister will not count toward the resolution of this market. If no such Prime Minister is sworn in by June 30, 2029, 11:59 PM ET, this market will resolve to “Other”.",
+        "resolution_source": "Official information from the Government of Australia; consensus credible reporting may also be used.",
+        "end_time": "2028-09-24T03:59:00Z"
+      }
+    },
+    {
+      "case_id": "jpmorgan-ceo-doug-petno-2026-11-14",
+      "label": "not_equivalent",
+      "confidence": "high",
+      "adjudicated_at": "2026-11-14T06:20:00Z",
+      "adjudicator": "project-audit",
+      "rationale_tags": [
+        "deadline",
+        "announcement-vs-office",
+        "interim-treatment"
+      ],
+      "rationale": "Polymarket resolves on the first official announcement of Jamie Dimon's successor by December 31, 2028, even if that person never actually becomes CEO, and excludes interim CEOs. Kalshi permits appointment, election, naming, designation, or succession to the CEO position through December 31, 2035. The horizon and qualifying trigger differ materially.",
+      "source_urls": [
+        "https://external-api.kalshi.com/trade-api/v2/events/KXNEWROLEJP-35DEC?with_nested_markets=true",
+        "https://gamma-api.polymarket.com/markets?slug=will-doug-petno-be-the-next-ceo-of-jpmorgan-chase-20260625175305645"
+      ],
+      "kalshi": {
+        "id": "KXNEWROLEJP-35DEC-DPE",
+        "match_text": "Who will be the next CEO of JP Morgan Chase? Doug Petno",
+        "context": "Who will be the next CEO of JPMorgan Chase?",
+        "rules_primary": "If Doug Petno is appointed, elected, named, designated, or succeeded to the position as CEO for JP Morgan Chase before Dec 31, 2035, then the market resolves to Yes.",
+        "rules_secondary": "",
+        "early_close_condition": "This market will close and expire early if the event occurs.",
+        "close_time": "2035-12-31T22:00:00Z"
+      },
+      "polymarket": {
+        "id": "2683524",
+        "question": "Will Doug Petno be the next CEO of JPMorgan Chase?",
+        "description": "This market will resolve according to the first individual who is officially announced as the successor to Jamie Dimon as CEO of JPMorgan Chase & Co. by December 31, 2028, 11:59 PM ET. An announcement of a successor will be sufficient for a \"Yes\" resolution regardless of whether the announced replacement actually becomes the next CEO of JPMorgan Chase. Interim CEOs will not qualify. If no successor is announced by December 31, 2028, 11:59 PM ET, this market will resolve to “Other”.",
+        "resolution_source": "Public statements from JPMorgan Chase & Co.; consensus credible reporting may also be used.",
+        "end_time": "2029-01-01T04:59:00Z"
+      }
+    },
+    {
+      "case_id": "nfl-champion-buffalo-2027-2026-11-14",
+      "label": "equivalent",
+      "confidence": "medium",
+      "adjudicated_at": "2026-11-14T06:20:00Z",
+      "adjudicator": "project-audit",
+      "rationale_tags": [
+        "same-event",
+        "same-outcome",
+        "settlement-timing-difference"
+      ],
+      "rationale": "Both binary contracts ask whether Buffalo wins the 2027 NFL/Pro Football league championship and ultimately resolve Yes only for that same championship outcome. Polymarket can resolve No early after elimination and has an explicit March 31 cancellation/backstop; Kalshi carries a long administrative close_time but an expected expiration on the championship date and closes after a title holder is declared. These timing/backstop differences matter operationally but do not change the ordinary-event binary winner proposition, so this is accepted as sufficiently outcome-equivalent for probability comparison while settlement timing should be modeled separately.",
+      "source_urls": [
+        "https://external-api.kalshi.com/trade-api/v2/markets/KXSB-27-BUF",
+        "https://gamma-api.polymarket.com/markets/1357374"
+      ],
+      "kalshi": {
+        "id": "KXSB-27-BUF",
+        "match_text": "Will Buffalo win the 2027 Pro Football Championship?",
+        "context": "2027 NFL Champion",
+        "rules_primary": "If Buffalo wins the 2027 Pro Football Championship, then the market resolves to Yes.",
+        "rules_secondary": "Kalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
+        "early_close_condition": "This market will close and expire after a title holder is declared.",
+        "close_time": "2029-02-13T23:30:00Z"
+      },
+      "polymarket": {
+        "id": "1357374",
+        "question": "Will the Buffalo Bills win the 2027 NFL league championship?",
+        "description": "This market will resolve according to the team that wins the 2027 NFL league championship. If at any point it becomes impossible for a listed team to win the 2027 NFL league championship per the rules of the NFL (e.g., they are eliminated in the playoffs), the corresponding market will resolve to “No”. If the 2027 NFL league championship game is cancelled, postponed after March 31, 2027 ET, or there is otherwise no winner declared within that timeframe, this market will resolve to “Other”.",
+        "resolution_source": "Official information from the NFL; consensus credible reporting may also be used.",
+        "end_time": "2027-04-01T03:59:00Z"
       }
     }
   ]
