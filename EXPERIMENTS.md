@@ -157,3 +157,45 @@ Polymarket:
 - 0 comparisons were published; 10 high-scoring candidates were withheld and written to the longitudinal pair ledger.
 
 **Conclusion.** The pipeline now records what it knew, what it refused to claim, how the matcher performed against adjudicated evidence, and what changed over time. The next quality bottleneck is corpus breadth, especially real positive-equivalence adjudications—not a lower lexical threshold.
+
+---
+
+## E008 — First positive control: improve recall without relaxing the threshold
+
+**Purpose.** Add the first adjudicated positive-equivalence case and use it to distinguish an overly conservative matcher from a genuinely incompatible contract pair.
+
+**Corpus expansion.**
+- Added two representative below-threshold negatives:
+  - Australia PM / Jim Chalmers: materially different 2029 backstop and repeat-election handling.
+  - JPMorgan next CEO / Doug Petno: 2028 announcement-based Polymarket trigger versus Kalshi appointment/naming/designation/succession through 2035.
+- Added the first positive control:
+  - Buffalo to win the 2027 NFL/Pro Football championship. The binary winner proposition is the same; venue settlement timing differs but does not change the ordinary championship outcome.
+
+**Baseline result (v2).**
+- Gold labels: 1 equivalent, 4 not-equivalent.
+- TP=0, TN=4, FP=0, FN=1.
+- Specificity=1.0.
+- Recall=0.0.
+- Precision undefined because the matcher published no positive candidate.
+- The Buffalo positive scored below the 0.76 threshold and was therefore a false negative.
+
+**Diagnosis.**
+1. Lexical normalization treated “Pro Football” and “NFL” as unrelated terminology.
+2. Temporal comparison used Kalshi's long administrative `close_time` rather than its event-centered `expected_expiration_time`.
+
+Neither defect justified lowering the global lexical threshold.
+
+**Intervention (v3).**
+- Add controlled phrase aliases:
+  - `National Football League → NFL`
+  - `Pro Football → NFL`
+  - `NFL league → NFL`
+- Preserve Kalshi `expected_expiration_time`.
+- Prefer expected resolution time over administrative fallback close time when comparing venue horizons.
+- Keep `MATCH_THRESHOLD = 0.76` unchanged.
+
+**Controlled result.**
+- TP=1, TN=4, FP=0, FN=0.
+- Accuracy=1.0, specificity=1.0, precision=1.0, recall=1.0, F1=1.0 on the current five-case corpus.
+
+**Conclusion.** The first recall improvement came from better representation, not a looser decision boundary. The perfect five-case score is not evidence of generalization; it is evidence that the identified defects were repaired without breaking the existing negative controls. Corpus expansion remains the next requirement before any broader matcher claim.
