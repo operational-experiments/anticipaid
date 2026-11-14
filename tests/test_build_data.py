@@ -114,3 +114,33 @@ def test_real_semantic_conflict_fixtures():
         reasons = b.semantic_conflicts(case["kalshi"], case["polymarket"])
         for fragment in case["expected_reason_fragments"]:
             assert any(fragment in reason for reason in reasons), (case["id"], fragment, reasons)
+
+
+def test_nfl_alias_normalization_clears_lexical_threshold():
+    score = b.match_score(
+        "Will Buffalo win the 2027 Pro Football Championship?",
+        "Will the Buffalo Bills win the 2027 NFL league championship?",
+        "2027-02-14T23:30:00Z",
+        "2027-04-01T03:59:00Z",
+    )
+    assert score >= b.MATCH_THRESHOLD
+
+
+def test_expected_expiration_prevents_admin_close_time_false_conflict():
+    k = {
+        "match_text": "Will Buffalo win the 2027 Pro Football Championship?",
+        "context": "2027 NFL Champion",
+        "rules_primary": "If Buffalo wins the 2027 Pro Football Championship, then the market resolves to Yes.",
+        "rules_secondary": "",
+        "early_close_condition": "This market will close and expire after a title holder is declared.",
+        "close_time": "2029-02-13T23:30:00Z",
+        "expected_expiration_time": "2027-02-14T23:30:00Z",
+    }
+    p = {
+        "question": "Will the Buffalo Bills win the 2027 NFL league championship?",
+        "description": "This market resolves according to the team that wins the 2027 NFL league championship.",
+        "resolution_source": "NFL",
+        "end_time": "2027-04-01T03:59:00Z",
+    }
+    assert b.kalshi_comparison_deadline(k) == "2027-02-14T23:30:00Z"
+    assert b.semantic_conflicts(k, p) == []
