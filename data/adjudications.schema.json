@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anticipaid.com/schemas/adjudications.schema.json",
+  "title": "Anticipaid adjudication corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_version",
+    "description",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "corpus_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "label",
+          "confidence",
+          "adjudicated_at",
+          "adjudicator",
+          "rationale_tags",
+          "rationale",
+          "source_urls",
+          "kalshi",
+          "polymarket"
+        ],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "enum": [
+              "equivalent",
+              "not_equivalent"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "adjudicated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "adjudicator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale_tags": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_urls": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "kalshi": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "match_text",
+              "context",
+              "rules_primary",
+              "rules_secondary",
+              "early_close_condition",
+              "close_time"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "match_text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context": {
+                "type": "string"
+              },
+              "rules_primary": {
+                "type": "string"
+              },
+              "rules_secondary": {
+                "type": "string"
+              },
+              "early_close_condition": {
+                "type": "string"
+              },
+              "close_time": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "polymarket": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "question",
+              "description",
+              "resolution_source",
+              "end_time"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "resolution_source": {
+                "type": "string"
+              },
+              "end_time": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
