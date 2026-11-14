@@ -144,3 +144,88 @@ def test_expected_expiration_prevents_admin_close_time_false_conflict():
     }
     assert b.kalshi_comparison_deadline(k) == "2027-02-14T23:30:00Z"
     assert b.semantic_conflicts(k, p) == []
+
+
+def test_adjudication_coverage_measures_only_active_gold_pairs(tmp_path, monkeypatch):
+    corpus = {
+        "corpus_version": "test",
+        "cases": [
+            {
+                "case_id": "covered",
+                "label": "equivalent",
+                "kalshi": {"id": "K1"},
+                "polymarket": {"id": "P1"},
+            },
+            {
+                "case_id": "missing-kalshi",
+                "label": "equivalent",
+                "kalshi": {"id": "K2"},
+                "polymarket": {"id": "P2"},
+            },
+            {
+                "case_id": "inactive",
+                "label": "not_equivalent",
+                "kalshi": {"id": "K3"},
+                "polymarket": {"id": "P3"},
+            },
+        ],
+    }
+    path = tmp_path / "adjudications.json"
+    path.write_text(json.dumps(corpus), encoding="utf-8")
+
+    kalshi_probe = {
+        "K1": {"ok": True, "active": True, "status": "active"},
+        "K2": {"ok": True, "active": True, "status": "active"},
+        "K3": {"ok": True, "active": False, "status": "closed"},
+    }
+    poly_probe = {
+        "P1": {"ok": True, "active": True, "closed": False},
+        "P2": {"ok": True, "active": True, "closed": False},
+        "P3": {"ok": True, "active": True, "closed": False},
+    }
+    monkeypatch.setattr(b, "_probe_kalshi_market", lambda market_id: kalshi_probe[market_id])
+    monkeypatch.setattr(b, "_probe_poly_market", lambda market_id: poly_probe[market_id])
+
+    result = b.audit_adjudication_coverage(
+        path,
+        [{"ticker": "K1"}, {"ticker": "K3"}],
+        [{"id": "P1"}, {"id": "P2"}, {"id": "P3"}],
+    )
+
+    assert result["eligible_active_pairs"] == 2
+    assert result["eligible_both_in_bulk"] == 1
+    assert result["eligible_bulk_coverage"] == 0.5
+
+    rows = {row["case_id"]: row for row in result["cases"]}
+    assert rows["covered"]["both_in_bulk"] is True
+    assert rows["missing-kalshi"]["kalshi_in_bulk"] is False
+    assert rows["missing-kalshi"]["polymarket_in_bulk"] is True
+    assert rows["inactive"]["eligible_active_pair"] is False
+
+
+def test_adjudication_coverage_is_null_when_no_gold_pair_is_active(tmp_path, monkeypatch):
+    corpus = {
+        "corpus_version": "test",
+        "cases": [{
+            "case_id": "inactive",
+            "label": "not_equivalent",
+            "kalshi": {"id": "K1"},
+            "polymarket": {"id": "P1"},
+        }],
+    }
+    path = tmp_path / "adjudications.json"
+    path.write_text(json.dumps(corpus), encoding="utf-8")
+
+    monkeypatch.setattr(
+        b, "_probe_kalshi_market",
+        lambda market_id: {"ok": True, "active": False, "status": "closed"},
+    )
+    monkeypatch.setattr(
+        b, "_probe_poly_market",
+        lambda market_id: {"ok": True, "active": True, "closed": False},
+    )
+
+    result = b.audit_adjudication_coverage(path, [], [])
+    assert result["eligible_active_pairs"] == 0
+    assert result["eligible_both_in_bulk"] == 0
+    assert result["eligible_bulk_coverage"] is None
