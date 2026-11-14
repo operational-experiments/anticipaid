@@ -8,7 +8,7 @@ Anticipaid is an experimental prediction-market comparison site. It ingests publ
 
 - Static site in `site/`
 - Live market build in `scripts/build_data.py`
-- Versioned adjudication corpus in `data/adjudications.json`
+- Versioned adjudication corpus in `data/adjudications.json` with formal schema in `data/adjudications.schema.json`
 - Matcher evaluation in `scripts/evaluate_matcher.py`
 - Append-only historical snapshot writer in `scripts/archive_snapshot.py`
 - GitHub Actions deployment in `.github/workflows/pages.yml`
