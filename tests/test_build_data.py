@@ -83,7 +83,7 @@ def test_pair_has_gap_when_unblocked():
         "probability":0.44,"volume":100,"end_time":"2027-01-01T00:00:00Z",
         "url":"https://polymarket.com/"
     }]
-    pairs, withheld = b.build_pairs(k,p)
+    pairs, withheld = b.build_pairs(k, p, {("K", "P")})
     assert len(pairs) == 1
     assert not withheld
     assert abs(pairs[0]["gap"] - 0.17) < 1e-9
@@ -102,7 +102,7 @@ def test_conflicted_pair_is_withheld():
         "description":"Interim or caretaker appointments will not count.","resolution_source":"",
         "probability":0.44,"volume":100,"end_time":None,"url":"https://polymarket.com/"
     }]
-    pairs, withheld = b.build_pairs(k,p)
+    pairs, withheld = b.build_pairs(k, p, {("K", "P")})
     assert not pairs
     assert len(withheld) == 1
 
@@ -229,3 +229,36 @@ def test_adjudication_coverage_is_null_when_no_gold_pair_is_active(tmp_path, mon
     assert result["eligible_active_pairs"] == 0
     assert result["eligible_both_in_bulk"] == 0
     assert result["eligible_bulk_coverage"] is None
+
+
+def test_unadjudicated_candidate_is_quarantined():
+    k = [{
+        "id":"K","title":"Will Acme launch before January 1 2027?",
+        "match_text":"Will Acme launch before January 1 2027?","context":"",
+        "rules_primary":"","rules_secondary":"","early_close_condition":"",
+        "probability":0.61,"volume":100,"close_time":"2027-01-01T00:00:00Z",
+        "url":"https://kalshi.com/"
+    }]
+    p = [{
+        "id":"P","question":"Will Acme launch before January 1, 2027?",
+        "description":"","resolution_source":"",
+        "probability":0.44,"volume":100,"end_time":"2027-01-01T00:00:00Z",
+        "url":"https://polymarket.com/"
+    }]
+    pairs, withheld = b.build_pairs(k, p)
+    assert pairs == []
+    assert len(withheld) == 1
+    assert withheld[0]["adjudicated"] is False
+    assert "not yet adjudicated equivalent" in withheld[0]["reasons"]
+
+
+def test_load_adjudicated_equivalent_pairs_only_accepts_positive_gold(tmp_path):
+    corpus = {
+        "cases": [
+            {"label":"equivalent","kalshi":{"id":"K1"},"polymarket":{"id":"P1"}},
+            {"label":"not_equivalent","kalshi":{"id":"K2"},"polymarket":{"id":"P2"}},
+        ]
+    }
+    path = tmp_path / "adjudications.json"
+    path.write_text(json.dumps(corpus), encoding="utf-8")
+    assert b.load_adjudicated_equivalent_pairs(path) == {("K1", "P1")}
