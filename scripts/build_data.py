@@ -22,7 +22,7 @@ from pathlib import Path
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
 METHOD_VERSION = "lexical-semantic-adjudicated-v4"
 MATCH_THRESHOLD = 0.76
-KALSHI_FETCH_LIMIT = 20000
+KALSHI_FETCH_LIMIT = 10000
 POLY_FETCH_LIMIT = 10000
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
