@@ -248,3 +248,36 @@ The automated semantic non-rejection layer therefore did not have enough precisi
 
 **Conclusion.**
 Matcher quality and source recall must be measured independently. Increasing an arbitrary prefix did not improve gold source recall and increased review noise. More importantly, “no known contradiction” is not strong enough evidence for publication. The next acquisition experiment should operate at the event level and retrieve candidate event markets deliberately rather than increasing a market-count ceiling.
+
+---
+
+## E010 — Event-index enrichment does not beat the prefix baseline
+
+**Purpose.** Test whether a lightweight Kalshi event catalog plus selective nested-event fetch can recover relevant contracts that are missing from the first 10,000 open-market prefix.
+
+**Method.**
+- Fetch up to 10,000 open Kalshi events without nested markets.
+- Match event title/subtitle against Polymarket questions using discriminative token overlap.
+- Require at least two shared discriminative tokens.
+- Fetch nested markets only for selected event tickers using the documented `tickers` filter.
+- Union those markets with the 10,000-market baseline.
+- Measure active adjudication coverage independently.
+
+**Representation correction during test.**
+The first selector test failed because `champion` and `championship` were normalized as unrelated. Added a controlled `championship → champion` normalization rather than lowering the two-token requirement.
+
+**Result.**
+- 23 tests passed.
+- Event catalog returned exactly 10,000 events with `truncated=true`.
+- 3,592 event families were selected.
+- 25,596 nested markets were fetched.
+- 21,509 markets were new beyond the baseline.
+- Effective Kalshi universe grew to 31,509 unique markets.
+- Buffalo was still absent.
+- Active-gold bulk coverage remained 4/5 = 0.8.
+- The enrichment therefore increased network work and matcher input substantially without improving measured gold source recall.
+
+**Conclusion.**
+The first event-index strategy is too broad and still inherits an arbitrary event-prefix cutoff. It is disabled in scheduled production.
+
+The next acquisition architecture should persist a Kalshi event catalog across runs: bootstrap the catalog separately, then maintain it with the API's `min_updated_ts` change filter. Candidate-event retrieval can operate over that persistent catalog without repeatedly fetching or arbitrarily truncating the event universe.
