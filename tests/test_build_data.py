@@ -301,3 +301,14 @@ def test_event_index_enrichment_unions_without_duplicate_tickers(monkeypatch):
     assert stats["event_catalog_count"] == 1
     assert stats["candidate_event_count"] == 1
     assert stats["new_markets_added"] == 1
+
+
+def test_event_index_retrieves_generic_family_by_containment():
+    events = [
+        {"event_ticker": "KXSB-27", "title": "Pro Football Champion", "sub_title": "Sports"},
+    ]
+    poly = [
+        {"id": "P1", "question": "Will the Buffalo Bills win the 2027 NFL league championship?"},
+    ]
+    selected = b.select_candidate_event_tickers(events, poly)
+    assert selected == ["KXSB-27"]
