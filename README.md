@@ -2,7 +2,7 @@
 
 **See the future disagree with itself.**
 
-Anticipaid is an experimental prediction-market comparison site. It ingests public market data, discovers plausible cross-venue matches, withholds candidates with known settlement incompatibilities, and only exposes price gaps when the automated guard finds no contradiction.
+Anticipaid is an experimental prediction-market comparison site. It ingests public market data, discovers plausible cross-venue matches, preserves semantic conflicts and source-coverage evidence, and only publishes price gaps for pairs explicitly adjudicated as settlement-equivalent.
 
 ## Architecture
 
@@ -28,9 +28,16 @@ Anticipaid separates three claims that should not be conflated:
 2. **Semantically unblocked candidate** — no implemented deterministic incompatibility rule fires.
 3. **Settlement-equivalent pair** — requires adjudicated evidence; automated non-rejection is not proof.
 
-The public comparison table only receives semantically unblocked candidates. Rejected candidates remain visible in the review queue with machine-generated reasons.
+The public comparison table only receives adjudicated equivalent pairs that also pass the current semantic guard. Automated candidates remain in the review queue until adjudication. This is intentionally stricter than the matcher itself.
+
+## Source coverage
+
+Matcher recall and ingestion recall are measured separately. Each production build directly probes the adjudicated venue IDs, determines which gold pairs are currently active, and reports whether those same contracts occurred in the bulk source scan.
+
+Both source scans expose configured ceilings and `truncated` flags. A truncated bulk scan is never represented as exhaustive.
 
 ## Evaluation
+
 
 `data/adjudications.json` is a versioned gold corpus. Current seed cases are high-confidence negatives discovered during real contract audits.
 
