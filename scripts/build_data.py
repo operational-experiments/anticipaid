@@ -22,6 +22,8 @@ from pathlib import Path
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
 METHOD_VERSION = "lexical-semantic-normalization-v3"
 MATCH_THRESHOLD = 0.76
+KALSHI_FETCH_LIMIT = 20000
+POLY_FETCH_LIMIT = 10000
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
@@ -144,7 +146,7 @@ def poly_probability(m):
     return p if p is not None and 0 <= p <= 1 else None
 
 
-def fetch_kalshi(max_items=10000):
+def fetch_kalshi(max_items=KALSHI_FETCH_LIMIT):
     """Fetch open Kalshi markets with parent event context.
 
     The safety ceiling is deliberately high. A returned truncation flag makes
@@ -178,7 +180,7 @@ def fetch_kalshi(max_items=10000):
             return out, False
 
 
-def fetch_poly(max_items=10000):
+def fetch_poly(max_items=POLY_FETCH_LIMIT):
     """Fetch active Polymarket markets using keyset pagination.
 
     Gamma offset pagination hard-stops near 2,000 rows. The keyset endpoint
@@ -561,12 +563,22 @@ def main():
     raw_k, raw_p = [], []
     try:
         raw_k, k_truncated = fetch_kalshi()
-        source["kalshi"] = {"ok": True, "count": len(raw_k), "truncated": k_truncated}
+        source["kalshi"] = {
+            "ok": True,
+            "count": len(raw_k),
+            "truncated": k_truncated,
+            "configured_limit": KALSHI_FETCH_LIMIT,
+        }
     except Exception as e:
         source["kalshi"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
     try:
         raw_p, p_truncated = fetch_poly()
-        source["polymarket"] = {"ok": True, "count": len(raw_p), "truncated": p_truncated}
+        source["polymarket"] = {
+            "ok": True,
+            "count": len(raw_p),
+            "truncated": p_truncated,
+            "configured_limit": POLY_FETCH_LIMIT,
+        }
     except Exception as e:
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
 
