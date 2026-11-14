@@ -25,6 +25,7 @@ MATCH_THRESHOLD = 0.76
 KALSHI_FETCH_LIMIT = 10000
 KALSHI_EVENT_CATALOG_LIMIT = 10000
 POLY_FETCH_LIMIT = 10000
+ENABLE_EVENT_INDEX_ENRICHMENT = False
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
 POLY_URL = "https://gamma-api.polymarket.com/markets"
@@ -700,16 +701,22 @@ def main():
     except Exception as e:
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
 
-    if raw_k and raw_p:
+    if ENABLE_EVENT_INDEX_ENRICHMENT and raw_k and raw_p:
         try:
             raw_k, enrichment = enrich_kalshi_from_event_catalog(raw_k, raw_p)
-            source["kalshi"]["event_index_enrichment"] = enrichment
+            source["kalshi"]["event_index_enrichment"] = {
+                "enabled": True,
+                **enrichment,
+            }
             source["kalshi"]["effective_count"] = len(raw_k)
         except Exception as exc:
             source["kalshi"]["event_index_enrichment"] = {
+                "enabled": True,
                 "ok": False,
                 "error": f"{type(exc).__name__}: {exc}"[:240],
             }
+    else:
+        source["kalshi"]["event_index_enrichment"] = {"enabled": False}
 
     coverage = audit_adjudication_coverage(args.adjudications, raw_k, raw_p)
     approved_pairs = load_adjudicated_equivalent_pairs(args.adjudications)
