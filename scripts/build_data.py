@@ -225,6 +225,8 @@ def canonical_kalshi(m):
     event = m.get("event_ticker") or ticker
     return {
         "id": ticker,
+        "event_id": str(event),
+        "category": (m.get("_event_category") or "").strip(),
         "title": title.strip(),
         "match_text": match_text.strip(),
         "context": context.strip(),
@@ -298,15 +300,18 @@ def build_candidate_index(poly):
 
 
 def diagnose_candidates(kalshi, poly, limit=20):
-    """Return strongest lexical near-matches with bounded memory."""
+    """Return diverse strongest lexical near-matches, one per Kalshi event."""
     pindex = build_candidate_index(poly)
-    top = []
+    best_by_event = {}
     serial = 0
+
     for k in kalshi:
         candidate_ids = defaultdict(int)
         for t in tokens(k.get("match_text") or k["title"]):
             for i in pindex.get(t, ()):
                 candidate_ids[i] += 1
+
+        best = None
         for i, count in candidate_ids.items():
             if count < 2:
                 continue
@@ -315,17 +320,28 @@ def diagnose_candidates(kalshi, poly, limit=20):
                 k.get("match_text") or k["title"], p["question"],
                 k.get("close_time"), p.get("end_time")
             )
-            item = (score, serial, k["title"], p["question"])
+            candidate = (score, serial, k, p)
             serial += 1
-            if len(top) < limit:
-                heapq.heappush(top, item)
-            elif score > top[0][0]:
-                heapq.heapreplace(top, item)
+            if best is None or candidate[:2] > best[:2]:
+                best = candidate
 
-    top.sort(key=lambda x: x[0], reverse=True)
+        if best is None:
+            continue
+        event_key = k.get("event_id") or k.get("id")
+        incumbent = best_by_event.get(event_key)
+        if incumbent is None or best[:2] > incumbent[:2]:
+            best_by_event[event_key] = best
+
+    top = sorted(best_by_event.values(), key=lambda x: x[0], reverse=True)[:limit]
     return [
-        {"score": round(score, 4), "kalshi": kt, "polymarket": pt}
-        for score, _, kt, pt in top
+        {
+            "score": round(score, 4),
+            "event_id": k.get("event_id"),
+            "category": k.get("category"),
+            "kalshi": k["title"],
+            "polymarket": p["question"],
+        }
+        for score, _, k, p in top
     ]
 
 def _full_terms(k, p):
