@@ -219,8 +219,10 @@ def select_candidate_event_tickers(events, raw_poly):
 
     selected = []
     for event in events:
-        event_text = " ".join(x for x in [event.get("title"), event.get("sub_title")] if x)
+        event_title = event.get("title") or ""
+        event_text = " ".join(x for x in [event_title, event.get("sub_title")] if x)
         event_tokens = {t for t in tokens(event_text) if not t.isdigit()}
+        core_tokens = {t for t in tokens(event_title) if not t.isdigit()}
         candidate_ids = defaultdict(int)
         for token in event_tokens:
             for i in pindex.get(token, ()):
@@ -231,8 +233,10 @@ def select_candidate_event_tickers(events, raw_poly):
             if count < 2:
                 continue
             score = match_score(event_text, questions[i])
-            event_coverage = count / max(1, len(event_tokens))
-            if score >= EVENT_MATCH_THRESHOLD or event_coverage >= 0.80:
+            question_tokens = {t for t in tokens(questions[i]) if not t.isdigit()}
+            core_overlap = len(core_tokens & question_tokens)
+            core_coverage = core_overlap / max(1, len(core_tokens))
+            if score >= EVENT_MATCH_THRESHOLD or (core_overlap >= 2 and core_coverage >= 0.80):
                 selected_event = True
                 break
 
