@@ -205,7 +205,7 @@ def fetch_kalshi_event_catalog(max_events=KALSHI_EVENT_CATALOG_LIMIT):
 
 
 def select_candidate_event_tickers(events, raw_poly):
-    """Select event families only when an event is proposition-similar to a Polymarket question."""
+    """Select event families by symmetric similarity or asymmetric event containment."""
     buckets = defaultdict(list)
     questions = []
     for i, market in enumerate(raw_poly):
@@ -220,22 +220,23 @@ def select_candidate_event_tickers(events, raw_poly):
     selected = []
     for event in events:
         event_text = " ".join(x for x in [event.get("title"), event.get("sub_title")] if x)
+        event_tokens = {t for t in tokens(event_text) if not t.isdigit()}
         candidate_ids = defaultdict(int)
-        for token in tokens(event_text):
-            if token.isdigit():
-                continue
+        for token in event_tokens:
             for i in pindex.get(token, ()):
                 candidate_ids[i] += 1
 
-        best_score = 0.0
+        selected_event = False
         for i, count in candidate_ids.items():
             if count < 2:
                 continue
-            best_score = max(best_score, match_score(event_text, questions[i]))
-            if best_score >= EVENT_MATCH_THRESHOLD:
+            score = match_score(event_text, questions[i])
+            event_coverage = count / max(1, len(event_tokens))
+            if score >= EVENT_MATCH_THRESHOLD or event_coverage >= 0.80:
+                selected_event = True
                 break
 
-        if best_score >= EVENT_MATCH_THRESHOLD:
+        if selected_event:
             ticker = event.get("event_ticker")
             if ticker:
                 selected.append(str(ticker))
