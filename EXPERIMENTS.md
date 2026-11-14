@@ -106,9 +106,9 @@ Polymarket:
 
 1. Expand deterministic semantic contradiction coverage without creating a brittle pile of venue-specific regexes.
 2. Distinguish scheduled trading/end metadata from actual resolution conditions.
-3. Preserve source terms and machine-generated reasons as provenance for every accepted or withheld comparison.
-4. Measure precision/recall against a manually adjudicated candidate set before relaxing thresholds.
-5. Add historical snapshots so disagreement persistence and convergence can be studied rather than only current price gaps.
+3. Adjudicate genuine positive-equivalence cases before reporting positive precision/recall.
+4. Measure candidate persistence and convergence across the history ledger before using temporal behavior as evidence.
+5. Determine whether the 10,000-record per-source safety ceilings should be raised, partitioned, or replaced with resumable full-universe scans.
 6. Treat “no comparable candidates” as a valid result, not a reason to lower quality gates.
 
 ---
@@ -129,3 +129,31 @@ Polymarket:
 - use Polymarket's keyset endpoint with `after_cursor` instead of deep offset pagination;
 - retain a high Kalshi safety ceiling while explicitly reporting when it is reached.
 
+
+---
+
+## E007 — Evaluation and history become first-class evidence
+
+**Purpose.** Prevent matcher changes and scheduled builds from becoming unverifiable one-off outputs.
+
+**Hypothesis.** A small versioned adjudication corpus plus append-only historical snapshots is enough to make matcher quality and time-series behavior measurable without polluting `main` with generated commits.
+
+**Method.**
+- create `data/adjudications.json` as a versioned gold corpus;
+- evaluate the current publication gate before every live build;
+- report undefined metrics as `null` when the corpus lacks the required denominator;
+- archive each successful snapshot and evaluation to a separate `history` branch;
+- append a stable-ID pair observation ledger for longitudinal analysis;
+- block deployment if tests, evaluation, live build, or history persistence fails.
+
+**Initial result.**
+- 12 tests passed in the first integrated run.
+- Seed corpus: 2 adjudicated `not_equivalent` cases, 0 adjudicated `equivalent` cases.
+- Confusion matrix: TN=2, FP=0, TP=0, FN=0.
+- Accuracy=1.0 and specificity=1.0.
+- Precision, recall, and F1 are undefined because there are no positive gold cases.
+- First archived snapshot: `20261114T060831720398Z-ad6744dee6a0`.
+- Live snapshot scanned 10,000 Kalshi and 10,000 Polymarket raw records before safety ceilings; 7,727 Polymarket records normalized into usable binary markets.
+- 0 comparisons were published; 10 high-scoring candidates were withheld and written to the longitudinal pair ledger.
+
+**Conclusion.** The pipeline now records what it knew, what it refused to claim, how the matcher performed against adjudicated evidence, and what changed over time. The next quality bottleneck is corpus breadth, especially real positive-equivalence adjudications—not a lower lexical threshold.
