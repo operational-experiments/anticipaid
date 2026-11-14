@@ -20,7 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 
 UA = "anticipaid/0.1 (+https://anticipaid.com)"
-METHOD_VERSION = "lexical-plus-semantic-guard-v2"
+METHOD_VERSION = "lexical-semantic-normalization-v3"
 MATCH_THRESHOLD = 0.76
 KALSHI_URL = "https://external-api.kalshi.com/trade-api/v2/markets"
 KALSHI_EVENTS_URL = "https://external-api.kalshi.com/trade-api/v2/events"
@@ -35,6 +35,11 @@ STOP = {
 WORD_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
 DEADLINE_YEAR_RE = re.compile(r"\b(?:before|by|until|through|no later than|deadline|expire(?:s|d)?|expiration)\b.{0,48}?\b((?:19|20)\d{2})\b", re.IGNORECASE)
+PHRASE_ALIASES = (
+    (re.compile(r"\bnational football league\b", re.IGNORECASE), "nfl"),
+    (re.compile(r"\bpro football\b", re.IGNORECASE), "nfl"),
+    (re.compile(r"\bnfl league\b", re.IGNORECASE), "nfl"),
+)
 
 
 def get_json(url: str, params: dict | None = None, retries: int = 3):
@@ -62,7 +67,10 @@ def fnum(value, default=None):
 
 
 def normalize(text: str) -> str:
-    words = WORD_RE.findall((text or "").lower().replace("’", "'"))
+    normalized = (text or "").lower().replace("’", "'")
+    for pattern, replacement in PHRASE_ALIASES:
+        normalized = pattern.sub(replacement, normalized)
+    words = WORD_RE.findall(normalized)
     return " ".join(w for w in words if w not in STOP)
 
 
@@ -92,6 +100,11 @@ def deadline_delta_days(a, b):
     if not da or not db:
         return None
     return abs((da - db).total_seconds()) / 86400
+
+
+def kalshi_comparison_deadline(k):
+    """Prefer expected resolution timing over an administrative fallback close time."""
+    return k.get("expected_expiration_time") or k.get("close_time")
 
 
 def kalshi_probability(m):
@@ -236,6 +249,7 @@ def canonical_kalshi(m):
         "probability": p,
         "volume": fnum(m.get("volume_fp"), 0) or 0,
         "close_time": m.get("close_time") or m.get("expected_expiration_time"),
+        "expected_expiration_time": m.get("expected_expiration_time"),
         "url": f"https://kalshi.com/markets/{urllib.parse.quote(str(event).lower())}",
     }
 
@@ -318,7 +332,7 @@ def diagnose_candidates(kalshi, poly, limit=20):
             p = poly[i]
             score = match_score(
                 k.get("match_text") or k["title"], p["question"],
-                k.get("close_time"), p.get("end_time")
+                kalshi_comparison_deadline(k), p.get("end_time")
             )
             candidate = (score, serial, k, p)
             serial += 1
@@ -392,7 +406,7 @@ def semantic_conflicts(k, p):
             f"(Kalshi {', '.join(sorted(ky))}; Polymarket {', '.join(sorted(py))})"
         )
 
-    dd = deadline_delta_days(k.get("close_time"), p.get("end_time"))
+    dd = deadline_delta_days(kalshi_comparison_deadline(k), p.get("end_time"))
     if dd is not None and dd > 370:
         reasons.append(f"scheduled end times differ by about {round(dd)} days")
 
@@ -424,7 +438,7 @@ def build_pairs(kalshi, poly):
             p = poly[i]
             score = match_score(
                 k.get("match_text") or k["title"], p["question"],
-                k.get("close_time"), p.get("end_time")
+                kalshi_comparison_deadline(k), p.get("end_time")
             )
             if score < MATCH_THRESHOLD:
                 continue
