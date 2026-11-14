@@ -21,6 +21,7 @@
     <nav aria-label="Primary">
       <a href="#disagreements">Disagreements</a>
       <a href="#review">Review queue</a>
+      <a href="#audit">Audit</a>
       <a href="#method">Method</a>
       <a href="https://github.com/operational-experiments/anticipaid" rel="noreferrer">Source</a>
     </nav>
@@ -114,6 +115,23 @@
       </div>
     </section>
 
+    <section class="audit" id="audit">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">matcher audit</div>
+          <h2>Measured, not assumed.</h2>
+        </div>
+        <a class="text-link" href="https://github.com/operational-experiments/anticipaid/blob/main/data/adjudications.json">Gold corpus →</a>
+      </div>
+      <div class="audit-grid" aria-label="Matcher evaluation metrics">
+        <article><span class="metric" id="eval-cases">—</span><span class="metric-label">adjudicated cases</span></article>
+        <article><span class="metric" id="eval-specificity">—</span><span class="metric-label">negative specificity</span></article>
+        <article><span class="metric" id="eval-precision">—</span><span class="metric-label">positive precision</span></article>
+        <article><span class="metric" id="eval-recall">—</span><span class="metric-label">positive recall</span></article>
+      </div>
+      <p class="audit-note" id="eval-note">Loading adjudication-backed evaluation…</p>
+    </section>
+
     <section class="method" id="method">
       <div class="section-head">
         <div>
@@ -157,7 +175,7 @@
   <footer>
     <span>Anticipaid</span>
     <span>Data for analysis, not trading advice.</span>
-    <span><a href="https://github.com/operational-experiments/anticipaid">github</a> · <a href="https://github.com/operational-experiments/anticipaid/blob/main/EXPERIMENTS.md">experiments</a></span>
+    <span><a href="https://github.com/operational-experiments/anticipaid">github</a> · <a href="https://github.com/operational-experiments/anticipaid/blob/main/EXPERIMENTS.md">experiments</a> · <a href="https://github.com/operational-experiments/anticipaid/tree/history/data">history</a></span>
   </footer>
 </body>
 </html>
