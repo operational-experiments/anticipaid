@@ -1,40 +1,20 @@
-# Anticipaid
+# Anticipaid history branch
 
-**See the future disagree with itself.**
+This branch is the append-only generated evidence ledger for Anticipaid.
 
-Anticipaid is an experimental prediction-market comparison site. It ingests public market data, identifies conservative candidate matches across venues, and highlights probability divergence without assuming that similar wording implies identical resolution criteria.
+Do not develop product code here. Canonical source lives on `main`.
 
-## Architecture
+## Generated data
 
-- Static site in `site/`
-- Public-data build in `scripts/build_data.py`
-- GitHub Actions deployment in `.github/workflows/pages.yml`
-- Scheduled rebuild every four hours, with no generated-data commits to `main`
+- `data/snapshots/YYYY/MM/DD/<snapshot-id>.json` — complete public snapshots.
+- `data/evaluations/YYYY/MM/DD/<snapshot-id>.json` — matcher evaluation paired with each snapshot.
+- `data/ledger.ndjson` — one provenance record per archived snapshot.
+- `data/pair-observations.ndjson` — longitudinal observations keyed by stable Kalshi/Polymarket IDs.
+- `data/latest.json` — most recent public snapshot.
+- `data/latest-evaluation.json` — most recent matcher evaluation.
 
-Initial adapters:
+Each scheduled production build archives here before GitHub Pages deployment. A failed archive blocks deployment.
 
-- Kalshi public REST market endpoint
-- Polymarket Gamma API
+Snapshot IDs combine the generation timestamp with a SHA-256 prefix. Re-archiving an identical snapshot is idempotent.
 
-## Matching semantics
-
-The output is deliberately called **candidate equivalence**. Lexical similarity is useful for discovery but is not proof that two contracts share settlement criteria, deadlines, resolution sources, or edge-case semantics. Explicitly conflicting numeric terms are rejected before scoring; surviving candidates must clear a conservative similarity threshold.
-
-## Local build
-
-```bash
-python scripts/build_data.py --output site/data/latest.json
-python -m http.server 8000 -d site
-```
-
-Then open <http://localhost:8000>.
-
-## Deployment
-
-Enable **Settings → Pages → Source: GitHub Actions** for this repository. The workflow handles subsequent deployment and scheduled refreshes.
-
-Custom domain: `anticipaid.com`
-
-## Non-goals
-
-Anticipaid does not execute trades and is not financial advice.
+For implementation and methodology, see the `main` branch.
