@@ -1,4 +1,4 @@
-name: Build and deploy Anticipaid
+name: Build, archive, and deploy Anticipaid
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     - cron: "17 */4 * * *"
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -24,14 +24,44 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Test matcher
+
+      - name: Test matcher and evidence pipeline
         run: python -m pytest -q tests
+
+      - name: Evaluate matcher
+        run: python scripts/evaluate_matcher.py --output site/data/evaluation.json
+
       - name: Build market snapshot
         run: python scripts/build_data.py --output site/data/latest.json
+
+      - name: Archive snapshot to history branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin history
+          rm -rf ../anticipaid-history
+          git worktree add --detach ../anticipaid-history origin/history
+          python scripts/archive_snapshot.py             --snapshot site/data/latest.json             --evaluation site/data/evaluation.json             --root ../anticipaid-history/data
+
+          cd ../anticipaid-history
+          git config user.name "anticipaid-history-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data
+
+          if git diff --cached --quiet; then
+            echo "Snapshot already archived."
+          else
+            stamp="$(python -c 'import json; print(json.load(open("data/latest.json"))["generated_at"])')"
+            git commit -m "Archive snapshot ${stamp}"
+            git push origin HEAD:history
+          fi
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
