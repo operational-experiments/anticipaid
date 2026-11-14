@@ -72,7 +72,7 @@ def evaluate_case(case):
     score = matcher.match_score(
         k.get("match_text") or "",
         p.get("question") or "",
-        k.get("close_time"),
+        matcher.kalshi_comparison_deadline(k),
         p.get("end_time"),
     )
     conflicts = matcher.semantic_conflicts(k, p)
