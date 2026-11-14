@@ -238,6 +238,23 @@ def _probe_poly_market(market_id):
         return {"ok": False, "active": None, "error": f"{type(exc).__name__}: {exc}"[:180]}
 
 
+def load_adjudicated_equivalent_pairs(corpus_path):
+    path = Path(corpus_path)
+    if not path.exists():
+        return set()
+    corpus = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        (
+            str((case.get("kalshi") or {}).get("id") or ""),
+            str((case.get("polymarket") or {}).get("id") or ""),
+        )
+        for case in corpus.get("cases", [])
+        if case.get("label") == "equivalent"
+        and (case.get("kalshi") or {}).get("id")
+        and (case.get("polymarket") or {}).get("id")
+    }
+
+
 def audit_adjudication_coverage(corpus_path, raw_kalshi, raw_poly):
     path = Path(corpus_path)
     if not path.exists():
@@ -489,7 +506,8 @@ def semantic_conflicts(k, p):
     return reasons
 
 
-def build_pairs(kalshi, poly):
+def build_pairs(kalshi, poly, approved_pairs=None):
+    approved_pairs = set(approved_pairs or ())
     pindex = build_candidate_index(poly)
 
     matches, withheld = [], []
@@ -521,7 +539,8 @@ def build_pairs(kalshi, poly):
         chosen = None
         for candidate in candidates:
             score, gap, i, p, conflicts = candidate
-            if not conflicts and i not in used_poly:
+            pair_id = (str(k.get("id") or ""), str(p.get("id") or ""))
+            if pair_id in approved_pairs and not conflicts and i not in used_poly:
                 chosen = candidate
                 break
 
@@ -532,19 +551,27 @@ def build_pairs(kalshi, poly):
                 "display_question": k["title"],
                 "match_score": round(score, 4),
                 "gap": round(gap, 4),
-                "compatibility": "unblocked_candidate",
-                "note": "No automated incompatibility rule fired; settlement equivalence remains unproven.",
+                "compatibility": "adjudicated_equivalent",
+                "adjudicated": True,
+                "note": "Manually adjudicated settlement-equivalent for comparison; venue timing and mechanics may still differ.",
                 "kalshi": k,
                 "polymarket": p,
             })
         elif candidates:
             score, gap, i, p, conflicts = candidates[0]
+            pair_id = (str(k.get("id") or ""), str(p.get("id") or ""))
+            reasons = list(conflicts)
+            if not reasons and pair_id not in approved_pairs:
+                reasons.append("not yet adjudicated equivalent")
+            elif not reasons:
+                reasons.append("approved candidate consumed by a stronger one-to-one match")
             withheld.append({
                 "display_question": k["title"],
                 "match_score": round(score, 4),
                 "gap": round(gap, 4),
                 "compatibility": "withheld",
-                "reasons": conflicts or ["candidate consumed by a stronger one-to-one match"],
+                "adjudicated": pair_id in approved_pairs,
+                "reasons": reasons,
                 "kalshi": k,
                 "polymarket": p,
             })
@@ -583,10 +610,11 @@ def main():
         source["polymarket"] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:240]}
 
     coverage = audit_adjudication_coverage(args.adjudications, raw_k, raw_p)
+    approved_pairs = load_adjudicated_equivalent_pairs(args.adjudications)
     k = [x for x in (canonical_kalshi(m) for m in raw_k) if x]
     p = [x for x in (canonical_poly(m) for m in raw_p) if x]
     if k and p:
-        pairs, withheld = build_pairs(k, p)
+        pairs, withheld = build_pairs(k, p, approved_pairs)
     else:
         pairs, withheld = [], []
     diagnostics = diagnose_candidates(k, p) if k and p else []
