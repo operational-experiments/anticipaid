@@ -262,3 +262,42 @@ def test_load_adjudicated_equivalent_pairs_only_accepts_positive_gold(tmp_path):
     path = tmp_path / "adjudications.json"
     path.write_text(json.dumps(corpus), encoding="utf-8")
     assert b.load_adjudicated_equivalent_pairs(path) == {("K1", "P1")}
+
+
+def test_event_index_selects_nfl_family_from_polymarket_question():
+    events = [
+        {"event_ticker": "KXSB-27", "title": "2027 NFL Champion", "sub_title": ""},
+        {"event_ticker": "KXRAIN", "title": "Rainfall in Phoenix", "sub_title": ""},
+    ]
+    poly = [
+        {"id": "P1", "question": "Will the Buffalo Bills win the 2027 NFL league championship?"},
+        {"id": "P2", "question": "Will rainfall in Seattle exceed 2 inches?"},
+    ]
+    selected = b.select_candidate_event_tickers(events, poly)
+    assert "KXSB-27" in selected
+    assert "KXRAIN" not in selected
+
+
+def test_event_index_enrichment_unions_without_duplicate_tickers(monkeypatch):
+    baseline = [
+        {"ticker": "K1", "title": "baseline"},
+    ]
+    poly = [{"id": "P1", "question": "Will Buffalo win the NFL championship?"}]
+    monkeypatch.setattr(
+        b, "fetch_kalshi_event_catalog",
+        lambda: ([{"event_ticker": "E1", "title": "NFL Championship", "sub_title": "Buffalo"}], False),
+    )
+    monkeypatch.setattr(
+        b, "fetch_kalshi_events_by_tickers",
+        lambda tickers: [
+            {"ticker": "K1", "title": "updated"},
+            {"ticker": "K2", "title": "new"},
+        ],
+    )
+    merged, stats = b.enrich_kalshi_from_event_catalog(baseline, poly)
+    by_id = {m["ticker"]: m for m in merged}
+    assert set(by_id) == {"K1", "K2"}
+    assert by_id["K1"]["title"] == "updated"
+    assert stats["event_catalog_count"] == 1
+    assert stats["candidate_event_count"] == 1
+    assert stats["new_markets_added"] == 1
