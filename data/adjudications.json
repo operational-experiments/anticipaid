@@ -157,7 +157,8 @@
         "rules_primary": "If Buffalo wins the 2027 Pro Football Championship, then the market resolves to Yes.",
         "rules_secondary": "Kalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
         "early_close_condition": "This market will close and expire after a title holder is declared.",
-        "close_time": "2029-02-13T23:30:00Z"
+        "close_time": "2029-02-13T23:30:00Z",
+        "expected_expiration_time": "2027-02-14T23:30:00Z"
       },
       "polymarket": {
         "id": "1357374",
